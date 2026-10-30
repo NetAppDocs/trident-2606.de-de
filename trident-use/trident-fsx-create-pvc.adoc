@@ -1,0 +1,92 @@
+---
+sidebar: sidebar 
+permalink: trident-use/trident-fsx-create-pvc.html 
+keywords: Amazon FSx for NetApp ONTAP, FSx for ONTAP, deploy Trident, integrate Trident, Trident 
+summary: 'Mit Trident und Amazon FSx für NetApp ONTAP können Sie sicherstellen, dass Ihre Kubernetes-Cluster, die im Amazon Elastic Kubernetes Service (EKS) ausgeführt werden, Block- und Datei-Persistent Volumes bereitstellen können, die von ONTAP unterstützt werden.' 
+---
+= PVC konfigurieren
+:hardbreaks:
+:allow-uri-read: 
+:icons: font
+:imagesdir: ../media/
+
+
+[role="lead"]
+Dieser Abschnitt enthält Anweisungen zum Erstellen eines PersistentVolumeClaim (PVC), der die konfigurierte Kubernetes-StorageClass verwendet, um ein PV anzufordern. Im Erfolgsfall kann das PV anschließend in einen Pod eingebunden werden.
+
+
+
+[[create-the-pvc]]
+== PVC erstellen
+
+Ein  https://kubernetes.io/docs/concepts/storage/persistent-volumes["_PersistentVolumeClaim_"^] (PVC) ist eine Anfrage für den Zugriff auf das PersistentVolume im Cluster. Die PVC kann so konfiguriert werden, dass sie Speicherplatz einer bestimmten Größe oder eines bestimmten Zugriffsmodus anfordert. Mithilfe der zugehörigen StorageClass kann der Clusteradministrator mehr als nur PersistentVolume-Größe und Zugriffsmodus steuern – zum Beispiel Leistung oder Servicelevel.
+
+Nachdem Sie das Trident-Backend und die StorageClass erstellt haben, können Sie ein PVC erstellen. Sobald das PVC erstellt ist, können Sie das Volume in einem Pod einbinden.
+
+
+
+[[sample-manifests]]
+=== Beispielmanifeste
+
+Die folgenden Beispiele zeigen grundlegende PVC-Konfigurationsoptionen.
+
+.PVC mit RWX-Zugriff
+Dieses Beispiel zeigt eine einfache PVC mit RWX-Zugriff, die mit einer StorageClass namens  `basic-csi` verknüpft ist.
+
+[source, YAML]
+----
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: pvc-storage
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: ontap-gold
+----
+.PVC mit iSCSI-Beispiel
+Dieses Beispiel zeigt eine einfache PVC für iSCSI mit RWO-Zugriff, die einer StorageClass namens  `protection-gold` zugeordnet ist.
+
+[source, YAML]
+----
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: pvc-san
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+  storageClassName: protection-gold
+----
+
+
+[[create-pvc]]
+=== PVC erstellen
+
+.Schritte
+. Die PVC wird erstellt.
++
+[source, console]
+----
+kubectl create -f pvc.yaml
+----
+. Überprüfen Sie den PVC-Status.
++
+[source, console]
+----
+kubectl get pvc
+----
+
+
+[listing]
+----
+NAME        STATUS VOLUME     CAPACITY ACCESS MODES STORAGECLASS AGE
+pvc-storage Bound  pv-name 2Gi      RWO                       5m
+----
+Siehe link:../trident-reference/objects.html["Kubernetes- und Trident-Objekte"] für Details dazu, wie Storage-Klassen mit dem  `PersistentVolumeClaim` interagieren und Parameter zur Steuerung, wie Trident Volumes bereitstellt.

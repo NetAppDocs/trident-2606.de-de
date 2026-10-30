@@ -1,0 +1,69 @@
+---
+sidebar: sidebar 
+permalink: trident-concepts/virtual-storage-pool.html 
+keywords: virtual pools, Trident, backends 
+summary: 'Virtuelle Pools bilden eine Abstraktionsebene zwischen den Speicher-Backends von Trident und Kubernetes" StorageClasses. Sie ermöglichen es einem Administrator, Aspekte wie Standort, Leistung und Schutz für jedes Backend auf eine einheitliche, backendunabhängige Weise zu definieren, ohne eine StorageClass angeben zu müssen, welches physische Backend, welcher Backend-Pool oder welcher Backend-Typ verwendet werden soll, um die gewünschten Kriterien zu erfüllen.' 
+---
+= Trident Konfiguration des virtuellen Storage Pools
+:hardbreaks:
+:allow-uri-read: 
+:icons: font
+:imagesdir: ../media/
+
+
+[role="lead"]
+Virtuelle Pools bieten eine Abstraktionsschicht zwischen Trident-Speicher-Backends und Kubernetes `StorageClasses`. Sie ermöglichen es einem Administrator, Aspekte wie Standort, Leistung und Schutz für jedes Backend auf eine einheitliche, backendunabhängige Weise zu definieren, ohne eine `StorageClass` angeben zu müssen, welches physische Backend, welcher Backend-Pool oder welcher Backend-Typ verwendet werden soll, um die gewünschten Kriterien zu erfüllen.
+
+
+
+[[learn-about-virtual-pools]]
+== Erfahren Sie mehr über virtuelle Pools
+
+Der Speicheradministrator kann virtuelle Pools auf jedem der Trident Backends in einer JSON- oder YAML-Definitionsdatei definieren.
+
+image::virtual_storage_pools.png[Zeigt das konzeptionelle Diagramm von virtuellen Pools.]
+
+Alle Aspekte, die außerhalb der Liste der virtuellen Pools angegeben werden, sind global für das Backend und gelten für alle virtuellen Pools, während jeder virtuelle Pool einen oder mehrere Aspekte individuell angeben kann (wodurch globale Aspekte des Backends überschrieben werden).
+
+[NOTE]
+====
+* Beim Definieren virtueller Pools sollten Sie nicht versuchen, die Reihenfolge vorhandener virtueller Pools in einer Backend-Definition zu ändern.
+* Wir raten davon ab, Attribute eines bestehenden virtuellen Pools zu ändern. Sie sollten einen neuen virtuellen Pool definieren, um Änderungen vorzunehmen.
+
+
+====
+Die meisten Aspekte werden in Backend-spezifischen Begriffen spezifiziert. Entscheidend ist, dass die Aspektwerte nicht außerhalb des Backend-Treibers zugänglich sind und nicht für den Abgleich in `StorageClasses` verfügbar sind. Stattdessen definiert der Administrator für jeden virtuellen Pool ein oder mehrere Labels. Jedes Label ist ein Schlüssel:Wert-Paar, und Labels können für verschiedene Backends identisch sein. Wie Aspekte können auch Labels pro Pool oder global für das Backend definiert werden. Im Gegensatz zu Aspekten, die vordefinierte Namen und Werte haben, kann der Administrator die Label-Schlüssel und -Werte nach Bedarf frei festlegen. Zur Vereinfachung können Speicheradministratoren Bezeichnungen pro virtuellem Pool definieren und Volumes nach Bezeichnung gruppieren.
+
+Die virtuellen Poolbezeichnungen können mit diesen Zeichen definiert werden:
+
+* Großbuchstaben `A-Z`
+* Kleinbuchstaben `a-z`
+* Zahlen `0-9`
+* Unterstriche `_`
+* Bindestriche  `-`
+
+
+A `StorageClass` identifiziert den zu verwendenden virtuellen Pool durch Verweis auf die Bezeichnungen innerhalb eines Selektorparameters. Selektoren für virtuelle Pools unterstützen die folgenden Operatoren:
+
+[cols="14%,34%,52%"]
+|===
+| Operator | Beispiel | Der Labelwert eines Pools muss: 
+
+
+| `=` | performance=premium | Übereinstimmen 
+
+
+| `!=` | performance!=extreme | Keine Übereinstimmung 
+
+
+| `in` | Standort in (east, west) | Teil der Wertemenge sein 
+
+
+| `notin` | performance notin (Silber, Bronze) | Nicht in der Wertemenge enthalten sein 
+
+
+| `<key>` | Schutz | Existiert mit beliebigem Wert 
+
+
+| `!<key>` | !Schutz | Nicht vorhanden 
+|===

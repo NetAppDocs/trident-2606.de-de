@@ -1,0 +1,240 @@
+---
+sidebar: sidebar 
+permalink: trident-protect/trident-protect-customize-installation.html 
+keywords: customize, trident protect, resource limits, security context constraints, SCC, NetApp AutoSupport, proxy connection, helm, helm chart, helm upgrade 
+summary: Passen Sie die Standardeinstellungen von Trident Protect an, um Ihre spezifischen Bedürfnisse zu erfüllen. 
+---
+= Trident Protect-Installation anpassen
+:hardbreaks:
+:allow-uri-read: 
+:icons: font
+:imagesdir: ../media/
+
+
+[role="lead"]
+Sie können die Standardkonfiguration von Trident Protect an die spezifischen Anforderungen Ihrer Umgebung anpassen.
+
+
+
+[[specify-trident-protect-container-resource-limits]]
+== Geben Sie die Ressourcenbeschränkungen für den Trident Protect-Container an.
+
+Sie können eine Konfigurationsdatei verwenden, um Ressourcenlimits für Trident Protect-Container festzulegen, nachdem Sie Trident Protect installiert haben. Durch das Festlegen von Ressourcenlimits können Sie steuern, wie viele Ressourcen des Clusters von Trident Protect-Operationen verbraucht werden.
+
+.Schritte
+. Erstellen Sie eine Datei mit dem Namen `resourceLimits.yaml`.
+. Füllen Sie die Datei mit Ressourcenlimitoptionen für Trident Protect-Container entsprechend den Anforderungen Ihrer Umgebung.
++
+Die folgende Beispiel-Konfigurationsdatei zeigt die verfügbaren Einstellungen und enthält die Standardwerte für jede Ressourcenbegrenzung:
+
++
+[source, yaml]
+----
+---
+jobResources:
+  defaults:
+    limits:
+      cpu: 8000m
+      memory: 10000Mi
+      ephemeralStorage: ""
+    requests:
+      cpu: 100m
+      memory: 100Mi
+      ephemeralStorage: ""
+  resticVolumeBackup:
+    limits:
+      cpu: ""
+      memory: ""
+      ephemeralStorage: ""
+    requests:
+      cpu: ""
+      memory: ""
+      ephemeralStorage: ""
+  resticVolumeRestore:
+    limits:
+      cpu: ""
+      memory: ""
+      ephemeralStorage: ""
+    requests:
+      cpu: ""
+      memory: ""
+      ephemeralStorage: ""
+  kopiaVolumeBackup:
+    limits:
+      cpu: ""
+      memory: ""
+      ephemeralStorage: ""
+    requests:
+      cpu: ""
+      memory: ""
+      ephemeralStorage: ""
+  kopiaVolumeRestore:
+    limits:
+      cpu: ""
+      memory: ""
+      ephemeralStorage: ""
+    requests:
+      cpu: ""
+      memory: ""
+      ephemeralStorage: ""
+----
+. Wenden Sie die Werte aus der  `resourceLimits.yaml` Datei an:
++
+[source, console]
+----
+helm upgrade trident-protect -n trident-protect netapp-trident-protect/trident-protect -f resourceLimits.yaml --reuse-values
+----
+
+
+
+
+[[customize-security-context-constraints]]
+== Sicherheitskontextbeschränkungen anpassen
+
+Sie können eine Konfigurationsdatei verwenden, um die OpenShift Security Context Constraint (SCCs) für Trident Protect-Container nach der Installation von Trident Protect zu ändern. Diese Beschränkungen definieren Sicherheitsvorgaben für Pods in einem Red Hat OpenShift Cluster.
+
+.Schritte
+. Erstellen Sie eine Datei mit dem Namen `sccconfig.yaml`.
+. Fügen Sie die SCC-Option zur Datei hinzu und ändern Sie die Parameter entsprechend den Anforderungen Ihrer Umgebung.
++
+Das folgende Beispiel zeigt die Standardwerte der Parameter für die SCC-Option:
+
++
+[source, yaml]
+----
+scc:
+  create: true
+  name: trident-protect-job
+  priority: 1
+----
++
+Diese Tabelle beschreibt die Parameter für die SCC-Option:
+
++
+|===
+| Parameter | Beschreibung | Standard 
+
+
+| erstellen | Legt fest, ob eine SCC-Ressource erstellt werden kann. Eine SCC-Ressource wird nur erstellt, wenn  `scc.create` auf  `true` gesetzt ist und der Helm-Installationsprozess eine OpenShift-Umgebung identifiziert. Wenn nicht auf OpenShift gearbeitet wird oder wenn  `scc.create` auf  `false` gesetzt ist, wird keine SCC-Ressource erstellt. | true 
+
+
+| Name | Gibt den Namen des SCC an. | trident-protect-job 
+
+
+| Priorität | Legt die Priorität der SCC fest. SCCs mit höheren Prioritätswerten werden vor solchen mit niedrigeren Werten bewertet. | 1 
+|===
+. Wenden Sie die Werte aus der  `sccconfig.yaml` Datei an:
++
+[source, console]
+----
+helm upgrade trident-protect -n trident-protect netapp-trident-protect/trident-protect -f sccconfig.yaml --reuse-values
+----
++
+Dadurch werden die Standardwerte durch die in der  `sccconfig.yaml` Datei angegebenen Werte ersetzt.
+
+
+
+
+
+[[configure-additional-trident-protect-helm-chart-settings]]
+== Konfigurieren Sie zusätzliche Trident Protect Helm-Chart-Einstellungen
+
+Sie können die AutoSupport-Einstellungen, die Namensraumfilterung und die OpenShift-Webhook-Zertifikatverwaltung an Ihre spezifischen Anforderungen anpassen. Die folgende Tabelle beschreibt die verfügbaren Konfigurationsparameter:
+
+|===
+| Parameter | Typ | Beschreibung 
+
+
+| autoSupport.proxy | Zeichenkette | Konfiguriert eine Proxy-URL für NetApp AutoSupport-Verbindungen. Verwenden Sie dies, um Support-Bundle-Uploads über einen Proxyserver zu leiten. Beispiel: `http://my.proxy.url`. 
+
+
+| autoSupport.insecure | boolescher Wert | Überspringt die TLS-Verifizierung für AutoSupport Proxyserver-Verbindungen, wenn auf `true` gesetzt. Nur für unsichere Proxyserver-Verbindungen verwenden. (Standard:  `false`) 
+
+
+| autoSupport.enabled | boolescher Wert | Aktiviert oder deaktiviert tägliche Trident Protect AutoSupport Bundle-Uploads. Wenn auf  `false` gesetzt, werden geplante tägliche Uploads deaktiviert, aber Sie können weiterhin Support-Bundles manuell generieren. (Standard:  `true`) 
+
+
+| restoreSkipNamespaceAnnotations | Zeichenkette | Kommagetrennte Liste von Namespace-Annotationen, die von Sicherungs- und Wiederherstellungsvorgängen ausgeschlossen werden sollen. Ermöglicht das Filtern von Namespaces anhand von Annotationen. 
+
+
+| restoreSkipNamespaceLabels | Zeichenkette | Durch Kommas getrennte Liste von Namespace-Labels, die von Sicherungs- und Wiederherstellungsvorgängen ausgeschlossen werden. Ermöglicht das Filtern von Namespaces anhand von Labels. 
+
+
+| useOpenshiftServiceCA | boolescher Wert | Ermöglicht die Integration mit OpenShifts nativem Service CA Operator für die automatische Erstellung und Einbindung von TLS-Zertifikaten für den Trident Protect Admission-Webhook. Wenn auf  `true` gesetzt, verwaltet der Service CA Operator die Webhook-TLS-Zertifikate automatisch. Nur auf OpenShift-Clustern verwenden. (Standard:  `false`) 
+|===
+Sie können diese Optionen entweder mit einer YAML-Konfigurationsdatei oder Befehlszeilen-Flags konfigurieren:
+
+[role="tabbed-block"]
+====
+.YAML-Datei verwenden
+--
+.Schritte
+. Erstelle eine Konfigurationsdatei und benenne sie  `values.yaml`.
+. Fügen Sie in der von Ihnen erstellten Datei die Konfigurationsoptionen hinzu, die Sie anpassen möchten.
++
+[source, console]
+----
+autoSupport:
+  enabled: false
+  proxy: http://my.proxy.url
+  insecure: true
+restoreSkipNamespaceAnnotations: "annotation1,annotation2"
+restoreSkipNamespaceLabels: "label1,label2"
+useOpenshiftServiceCA: true
+----
+. Nachdem Sie die  `values.yaml` Datei mit den korrekten Werten gefüllt haben, wenden Sie die Konfigurationsdatei an:
++
+[source, console]
+----
+helm upgrade trident-protect -n trident-protect netapp-trident-protect/trident-protect -f values.yaml --reuse-values
+----
+
+
+--
+.CLI-Flag verwenden
+--
+.Schritte
+. Verwenden Sie den folgenden Befehl mit dem  `--set` Flag, um einzelne Parameter anzugeben:
++
+[source, console]
+----
+helm upgrade trident-protect -n trident-protect netapp-trident-protect/trident-protect \
+  --set autoSupport.enabled=false \
+  --set autoSupport.proxy=http://my.proxy.url \
+  --set-string restoreSkipNamespaceAnnotations="{annotation1,annotation2}" \
+  --set-string restoreSkipNamespaceLabels="{label1,label2}" \
+  --set useOpenshiftServiceCA=true \
+  --reuse-values
+----
+
+
+--
+====
+
+
+[[restrict-trident-protect-pods-to-specific-nodes]]
+== Trident Protect-Pods auf bestimmte Knoten beschränken
+
+Sie können die Kubernetes nodeSelector Knotenauswahlbeschränkung verwenden, um anhand von Knotenbezeichnungen zu steuern, welche Ihrer Knoten berechtigt sind, Trident Protect-Pods auszuführen. Standardmäßig ist Trident Protect auf Knoten beschränkt, auf denen Linux ausgeführt wird. Sie können diese Beschränkungen je nach Bedarf weiter anpassen.
+
+.Schritte
+. Erstellen Sie eine Datei mit dem Namen `nodeSelectorConfig.yaml`.
+. Fügen Sie die nodeSelector-Option zur Datei hinzu und bearbeiten Sie die Datei, um Knotenbezeichnungen hinzuzufügen oder zu ändern, um die Einschränkungen entsprechend den Anforderungen Ihrer Umgebung anzupassen. Die folgende Datei enthält beispielsweise die Standardeinschränkung des Betriebssystems, zielt aber auch auf eine bestimmte Region und einen bestimmten Anwendungsnamen ab:
++
+[source, yaml]
+----
+nodeSelector:
+  kubernetes.io/os: linux
+  region: us-west
+  app.kubernetes.io/name: mysql
+----
+. Wenden Sie die Werte aus der  `nodeSelectorConfig.yaml` Datei an:
++
+[source, console]
+----
+helm upgrade trident-protect -n trident-protect netapp-trident-protect/trident-protect -f nodeSelectorConfig.yaml --reuse-values
+----
++
+Dadurch werden die Standardbeschränkungen durch die von Ihnen in der `nodeSelectorConfig.yaml` Datei angegebenen Beschränkungen ersetzt.
+
+

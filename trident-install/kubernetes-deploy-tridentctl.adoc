@@ -1,0 +1,215 @@
+---
+sidebar: sidebar 
+permalink: trident-install/kubernetes-deploy-tridentctl.html 
+keywords: deploy, Trident, methods, tridentctl, windows 
+summary: 'Sie können Trident mit  `tridentctl` installieren. Dieser Prozess gilt für Installationen, bei denen die von Trident benötigten Container-Images entweder in einer privaten Registry gespeichert sind oder nicht.' 
+---
+= Installieren Sie Trident mit tridentctl
+:hardbreaks:
+:allow-uri-read: 
+:icons: font
+:imagesdir: ../media/
+
+
+[role="lead"]
+Sie können Trident mit  `tridentctl` installieren. Dieser Prozess gilt für Installationen, bei denen die von Trident benötigten Container-Images entweder in einer privaten Registry gespeichert sind oder nicht. Um Ihre  `tridentctl` Bereitstellung anzupassen, siehe link:kubernetes-customize-deploy-tridentctl.html["tridentctl-Bereitstellung anpassen"].
+
+
+
+[[critical-information-about-trident10]]
+== Wichtige Informationen zu Trident10
+
+*Sie müssen die folgenden wichtigen Informationen über Trident lesen.*
+
+.<strong>Wichtige Informationen zu Trident</strong>
+[%collapsible%open]
+====
+* Kubernetes 1.27 wird jetzt in Trident unterstützt. Vor dem Upgrade von Kubernetes ist ein Upgrade von Trident erforderlich.
+* Trident setzt die Verwendung der Multipathing-Konfiguration in SAN-Umgebungen strikt durch, mit einem empfohlenen Wert von  `find_multipaths: no` in der multipath.conf-Datei.
++
+Die Verwendung einer Konfiguration ohne Multipathing oder die Verwendung von  `find_multipaths: yes` oder  `find_multipaths: smart` Wert in der Datei multipath.conf führt zu Mount-Fehlern. Trident hat die Verwendung von  `find_multipaths: no` seit der Version 21.07 empfohlen.
+
+
+
+====
+
+
+[[install-trident-using-tridentctl]]
+== Installieren Sie Trident mit `tridentctl`
+
+Überprüfen Sie link:kubernetes-deploy.html["die Installationsübersicht"], um sicherzustellen, dass Sie die Installationsvoraussetzungen erfüllt und die richtige Installationsoption für Ihre Umgebung ausgewählt haben.
+
+.Bevor Sie beginnen
+Bevor Sie mit der Installation beginnen, melden Sie sich am Linux-Host an und vergewissern Sie sich, dass dieser ein funktionierendes link:../trident-get-started/requirements.html["unterstützter Kubernetes-Cluster"^] verwaltet und dass Sie über die erforderlichen Berechtigungen verfügen.
+
+
+NOTE: Mit OpenShift verwenden Sie  `oc` statt  `kubectl` in allen folgenden Beispielen und melden Sie sich zuerst als *system:admin* an, indem Sie  `oc login -u system:admin` oder  `oc login -u kube-admin` ausführen.
+
+[%collapsible%open]
+====
+. Überprüfen Sie Ihre Kubernetes-Version:
++
+[listing]
+----
+kubectl version
+----
+. Überprüfen Sie die Cluster-Administratorrechte:
++
+[listing]
+----
+kubectl auth can-i '*' '*' --all-namespaces
+----
+. Überprüfen Sie, ob Sie einen Pod starten können, der ein Image von Docker Hub verwendet, und Ihr Speichersystem über das Pod-Netzwerk erreichen können.
++
+[listing]
+----
+kubectl run -i --tty ping --image=busybox --restart=Never --rm -- \
+  ping <management IP>
+----
+
+
+====
+
+
+[[step-1-download-the-trident-installer-package]]
+== Schritt 1: Laden Sie das Trident-Installationspaket herunter
+
+Das Trident-Installationspaket erstellt einen Trident Pod, konfiguriert die CRD-Objekte, die zur Zustandsverwaltung verwendet werden, und initialisiert die CSI-Sidecars, um Aktionen wie das Bereitstellen und Anbinden von Volumes an die Cluster-Hosts auszuführen. Laden Sie die neueste Version des Trident-Installationsprogramms von link:https://github.com/NetApp/trident/releases/latest["der Abschnitt _Assets_ auf GitHub"^] herunter und extrahieren Sie sie. Aktualisieren Sie _<trident-installer-XX.XX.X.tar.gz>_ im Beispiel mit Ihrer ausgewählten Trident Version.
+
+[listing]
+----
+wget https://github.com/NetApp/trident/releases/download/v26.06.0/trident-installer-26.06.0.tar.gz
+tar -xf trident-installer-26.06.0.tar.gz
+cd trident-installer
+----
+
+
+[[step-2-install-trident]]
+== Schritt 2: Trident installieren
+
+Installieren Sie Trident im gewünschten Namespace, indem Sie den  `tridentctl install` Befehl ausführen. Sie können zusätzliche Argumente hinzufügen, um den Speicherort der Image-Registry anzugeben.
+
+[role="tabbed-block"]
+====
+.Standardmodus
+--
+[listing]
+----
+./tridentctl install -n trident
+----
+--
+.Images in einem Registry
+--
+[listing]
+----
+./tridentctl install -n trident --image-registry <your-registry> --autosupport-image <your-registry>/trident-autosupport:26.06 --trident-image <your-registry>/trident:26.06.0
+----
+--
+.Images in verschiedenen Registern
+--
+[listing]
+----
+./tridentctl install -n trident --image-registry <your-registry> --autosupport-image <your-registry>/trident-autosupport:26.06 --trident-image <your-registry>/trident:26.06.0
+----
+--
+====
+Ihr Installationsstatus sollte in etwa so aussehen.
+
+[listing]
+----
+....
+INFO Starting Trident installation.                namespace=trident
+INFO Created service account.
+INFO Created cluster role.
+INFO Created cluster role binding.
+INFO Added finalizers to custom resource definitions.
+INFO Created Trident service.
+INFO Created Trident secret.
+INFO Created Trident deployment.
+INFO Created Trident daemonset.
+INFO Waiting for Trident pod to start.
+INFO Trident pod started.                          namespace=trident pod=trident-controller-679648bd45-cv2mx
+INFO Waiting for Trident REST interface.
+INFO Trident REST interface is up.                 version=26.10.0
+INFO Trident installation succeeded.
+....
+----
+
+
+[[verify-the-installation]]
+== Überprüfen Sie die Installation
+
+Sie können Ihre Installation anhand des pod creation status oder  `tridentctl` überprüfen.
+
+
+
+[[using-pod-creation-status]]
+=== Verwendung des Pod-Erstellungsstatus
+
+Sie können bestätigen, ob die Trident Installation abgeschlossen wurde, indem Sie den Status der erstellten Pods überprüfen:
+
+[listing]
+----
+kubectl get pods -n trident
+
+NAME                                  READY   STATUS    RESTARTS   AGE
+trident-controller-679648bd45-cv2mx   6/6     Running   0          5m29s
+trident-node-linux-vgc8n              2/2     Running   0          5m29s
+----
+
+NOTE: Falls das Installationsprogramm nicht erfolgreich abgeschlossen wird oder  `trident-controller-<generated id>` (`trident-csi-<generated id>` in Versionen vor 23.01) keinen *Running*-Status hat, wurde die Plattform nicht installiert. Verwenden Sie  `-d` , um link:../troubleshooting.html#unsuccessful-trident-deployment-using-tridentctl["Debug-Modus aktivieren"] das Problem zu beheben und zu analysieren.
+
+
+
+[[using-tridentctl]]
+=== Verwendung `tridentctl`
+
+Sie können  `tridentctl` verwenden, um die installierte Version von Trident zu überprüfen.
+
+[listing]
+----
+./tridentctl -n trident version
+
++----------------+----------------+
+| SERVER VERSION | CLIENT VERSION |
++----------------+----------------+
+| 26.06.0        | 26.06.0        |
++----------------+----------------+
+----
+
+
+[[sample-configurations]]
+== Beispielkonfigurationen
+
+Die folgenden Beispiele enthalten Beispielkonfigurationen für die Installation von Trident mit  `tridentctl`.
+
+.Windows-Knoten
+[%collapsible]
+====
+Um Trident auf Windows-Knoten auszuführen:
+
+[listing]
+----
+tridentctl install --windows -n trident
+----
+====
+.Trennung erzwingen
+[%collapsible]
+====
+Informationen finden sich unter link:../trident-reco/force-detach.html["Automatisierung des Failovers von zustandsbehafteten Anwendungen mit Trident"].
+
+[listing]
+----
+tridentctl install --enable-force-detach=true -n trident
+----
+====
+.Gleichzeitige Trident-Controller-Operationen ermöglichen
+[%collapsible]
+====
+Um gleichzeitige Trident Controller-Operationen für verbesserten Durchsatz zu ermöglichen, kann die  `--enable-concurrency` Option während der Installation wie in diesem Beispiel hinzugefügt werden. Weitere Informationen zu unterstützten Treibern sind unter folgendem Link zu finden: https://docs.netapp.com/us-en/trident/trident-use/controller-scalability.html#controller-scalability[Controller Scalability documentation].
+
+[listing]
+----
+tridentctl install --enable-concurrency -n trident
+----
+====

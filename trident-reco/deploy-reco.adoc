@@ -1,0 +1,33 @@
+---
+sidebar: sidebar 
+permalink: trident-reco/deploy-reco.html 
+keywords: deployment, deploy, trident, namespace 
+summary: Verwenden Sie die hier aufgeführten Empfehlungen, wenn Sie Trident bereitstellen. 
+---
+= Empfehlungen für das Trident Deployment
+:hardbreaks:
+:allow-uri-read: 
+:icons: font
+:imagesdir: ../media/
+
+
+[role="lead"]
+Verwenden Sie die hier aufgeführten Empfehlungen, wenn Sie Trident bereitstellen.
+
+
+
+[[deploy-to-a-dedicated-namespace]]
+== In einem dedizierten Namensraum bereitstellen
+
+https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/["Namensräume"^]Sie sorgen für eine administrative Trennung zwischen verschiedenen Anwendungen und stellen eine Barriere für die gemeinsame Nutzung von Ressourcen dar. Beispielsweise kann ein PVC aus einem Namespace nicht von einem anderen verwendet werden. Trident stellt PV-Ressourcen allen Namespaces im Kubernetes-Cluster zur Verfügung und nutzt daher ein Servicekonto mit erweiterten Berechtigungen.
+
+Darüber hinaus könnte der Zugriff auf den Trident-Pod einem Benutzer den Zugriff auf Anmeldeinformationen des Speichersystems und andere sensible Informationen ermöglichen. Es ist wichtig sicherzustellen, dass Anwendungsbenutzer und Verwaltungsanwendungen nicht die Möglichkeit haben, auf die Trident-Objektdefinitionen oder die Pods selbst zuzugreifen.
+
+
+
+[[use-quotas-and-range-limits-to-control-storage-consumption]]
+== Verwenden Sie Quoten und Bereichsgrenzen, um den Speicherverbrauch zu kontrollieren
+
+Kubernetes verfügt über zwei Funktionen, die in Kombination einen leistungsstarken Mechanismus zur Begrenzung des Ressourcenverbrauchs von Anwendungen bieten. Der  https://kubernetes.io/docs/concepts/policy/resource-quotas/#storage-resource-quota["Speicherquotenmechanismus"^] ermöglicht es dem Administrator, globale sowie speicherklassenspezifische Kapazitäts- und Objektanzahlbeschränkungen pro Namespace zu implementieren. Darüber hinaus stellt die Verwendung eines  https://kubernetes.io/docs/tasks/administer-cluster/limit-storage-consumption/#limitrange-to-limit-requests-for-storage["Bereichslimit"^] sicher, dass die PVC-Anfragen sowohl einen minimalen als auch einen maximalen Wert einhalten, bevor die Anfrage an den Provisioner weitergeleitet wird.
+
+Diese Werte werden pro Namensraum definiert, was bedeutet, dass für jeden Namensraum Werte definiert sein sollten, die seinen Ressourcenanforderungen entsprechen. Siehe hier für Informationen über  https://netapp.io/2017/06/09/self-provisioning-storage-kubernetes-without-worry["wie man Quoten nutzt"^].

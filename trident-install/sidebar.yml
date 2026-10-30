@@ -1,0 +1,30 @@
+---
+section: trident-install
+title: Trident installieren
+entries:
+- title: Installationsübersicht
+  url: "/trident-install/kubernetes-deploy.html"
+- title: Installation mit dem Trident operator
+  entries:
+  - title: Manuelle Bereitstellung des Trident Operators (Standard)
+    url: "/trident-install/kubernetes-deploy-operator.html"
+  - title: Manuelle Bereitstellung des Trident Operators (Offline)
+    url: "/trident-install/kubernetes-deploy-operator-mirror.html"
+  - title: Trident Helm Chart (Standard) verwenden
+    url: "/trident-install/kubernetes-deploy-helm.html"
+  - title: Trident Helm Chart verwenden (Offline)
+    url: "/trident-install/kubernetes-deploy-helm-mirror.html"
+  - title: Trident-Operator-Installation anpassen
+    url: "/trident-install/kubernetes-customize-deploy.html"
+- title: Installation mit tridentctl
+  entries:
+  - title: Installation mit tridentctl
+    url: "/trident-install/kubernetes-deploy-tridentctl.html"
+  - title: tridentctl-Installation anpassen
+    url: "/trident-install/kubernetes-customize-deploy-tridentctl.html"
+- title: Installation mit dem OpenShift zertifizierten Operator
+  entries:
+  - title: Installieren Sie Trident mit OpenShift OperatorHub
+    url: "/trident-install/openshift-operator-deploy.html"
+  - title: Wechseln Sie zum OpenShift zertifizierten Trident Operator
+    url: "/trident-install/openshift-certified-operator-deploy.html"

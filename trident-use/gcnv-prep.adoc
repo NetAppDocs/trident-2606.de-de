@@ -1,0 +1,33 @@
+---
+sidebar: sidebar 
+permalink: trident-use/gcnv-prep.html 
+keywords: trident backend, google cloud netapp volumes, smb volumes, active directory, csi proxy, aks, cloud identity 
+summary: Bevor Sie Ihr Google Cloud NetApp Volumes-Backend konfigurieren können, müssen Sie sicherstellen, dass die folgenden Voraussetzungen erfüllt sind. 
+---
+= Bereiten Sie die Konfiguration eines Google Cloud NetApp Volumes-Backends vor
+:hardbreaks:
+:allow-uri-read: 
+:icons: font
+:imagesdir: ../media/
+
+
+[role="lead"]
+Bevor Sie Ihr Google Cloud NetApp Volumes-Backend konfigurieren können, müssen Sie sicherstellen, dass die folgenden Voraussetzungen erfüllt sind.
+
+
+
+[[prerequisites-for-nfs-or-smb-volumes]]
+== Voraussetzungen für NFS- oder SMB-Volumes
+
+Wenn Sie Google Cloud NetApp Volumes zum ersten Mal oder an einem neuen Standort verwenden, ist eine anfängliche Konfiguration erforderlich, um Google Cloud NetApp Volumes einzurichten und ein NFS- oder SMB-Volume zu erstellen. Weitere Informationen enthält link:https://cloud.google.com/netapp/volumes/docs/before-you-begin/application-resilience["Bevor Sie beginnen"^].
+
+Stellen Sie sicher, dass Sie Folgendes haben, bevor Sie das Google Cloud NetApp Volumes-Backend konfigurieren:
+
+* Ein Google Cloud-Konto, das mit dem Google Cloud NetApp Volumes Service konfiguriert ist. Weitere Informationen enthält link:https://cloud.google.com/netapp-volumes["Google Cloud NetApp Volumes"^].
+* Projektnummer Ihres Google Cloud account. Weitere Informationen enthält link:https://cloud.google.com/resource-manager/docs/creating-managing-projects#identifying_projects["Projekte identifizieren"^].
+* Ein Google Cloud-Dienstkonto mit der NetApp Volumes Admin (`roles/netapp.admin`-Rolle. Weitere Informationen enthält link:https://cloud.google.com/netapp/volumes/docs/get-started/configure-access/iam#roles_and_permissions["Identitäts- und Zugriffsmanagement-Rollen und -Berechtigungen"^].
+* API-Schlüsseldatei für Ihr GCNV-Konto. Siehe link:https://cloud.google.com/iam/docs/keys-create-delete#creating["Erstellen Sie einen Dienstkontoschlüssel"^]
+* Ein Speicherpool. Weitere Informationen enthält link:https://cloud.google.com/netapp/volumes/docs/configure-and-use/storage-pools/overview["Übersicht der Storage Pools"^].
+
+
+Weitere Informationen zum Einrichten des Zugriffs auf Google Cloud NetApp Volumes finden Sie unter link:https://cloud.google.com/netapp/volumes/docs/get-started/configure-access/workflow#before_you_begin["Richten Sie den Zugriff auf Google Cloud NetApp Volumes ein"^].

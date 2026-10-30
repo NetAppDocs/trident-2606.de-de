@@ -1,0 +1,23 @@
+---
+section: trident-docker
+title: Trident für Docker
+entries:
+- title: Voraussetzungen für die Bereitstellung
+  url: "/trident-docker/prereqs-docker.html"
+- title: Trident bereitstellen
+  url: "/trident-docker/deploy-docker.html"
+- title: Aktualisieren oder deinstallieren Sie Trident
+  url: "/trident-docker/upgrade-uninstall-docker.html"
+- title: Arbeiten mit Volumes
+  url: "/trident-docker/volumes-docker.html"
+  entries:
+  - title: Treiber-spezifische Volume-Optionen
+    url: "/trident-docker/volume-driver-options.html"
+- title: Protokolle sammeln
+  url: "/trident-docker/collect-logs-docker.html"
+- title: Mehrere Trident-Instanzen verwalten
+  url: "/trident-docker/multiple-instances-docker.html"
+- title: Speicherkonfigurationsoptionen
+  url: "/trident-docker/stor-config.html"
+- title: Bekannte Probleme
+  url: "/trident-docker/known-issues-docker.html"

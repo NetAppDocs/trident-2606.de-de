@@ -1,0 +1,113 @@
+---
+sidebar: sidebar 
+permalink: get-help.html 
+keywords: get help, get support, knowledgebase, discord, phone, web, ticket, contact support, support ticket 
+summary: NetApp bietet Unterstützung für Trident auf verschiedene Weise. Umfangreiche kostenlose Selbsthilfeoptionen stehen 24x7 zur Verfügung, beispielsweise ein Discord-Kanal. 
+---
+= Support
+:hardbreaks:
+:allow-uri-read: 
+:icons: font
+:imagesdir: ./media/
+
+
+[role="lead"]
+NetApp bietet Unterstützung für Trident auf verschiedene Weise. Umfangreiche kostenlose Selbsthilfeoptionen stehen rund um die Uhr zur Verfügung, wie zum Beispiel Knowledgebase (KB)-Artikel und ein Discord-Kanal.
+
+
+
+[[trident-support-lifecycle]]
+== Trident Support-Lebenszyklus
+
+Trident bietet drei Supportstufen basierend auf Ihrer Version. Weitere Informationen enthält link:https://mysupport.netapp.com/site/info/version-support["NetApp Softwareversionsunterstützung für Definitionen"^].
+
+Volle Unterstützung:: Trident bietet vollen Support für zwölf Monate ab dem Veröffentlichungsdatum.
+Eingeschränkte Unterstützung:: Trident bietet nur eingeschränkten Support für die Monate 13 bis 24 ab dem Veröffentlichungsdatum.
+Selbsthilfe:: Die Trident-Dokumentation ist für die Monate 25 bis 36 ab dem Veröffentlichungsdatum verfügbar.
+
+
+[cols="1, 1, 1, 1"]
+|===
+
+
+| Version | Ende der vollständigen Unterstützung | Ende der eingeschränkten Unterstützung | Ende des Self-Support 
+
+
+ a| 
+link:https://docs.netapp.com/us-en/trident/index.html["26,06"^]
+| Juli 2027 | Juli 2028 | Juli 2029 
+
+
+ a| 
+link:https://docs.netapp.com/us-en/trident/index.html["26,02"^]
+| Februar 2027 | Februar 2028 | Februar 2029 
+
+
+ a| 
+link:https://docs.netapp.com/us-en/trident/index.html["25,10"^]
+| Oktober 2026 | Oktober 2027 | Oktober 2028 
+
+
+ a| 
+link:https://docs.netapp.com/us-en/trident-2506/index.html["25,06"^]
+| Juni 2026 | Juni 2027 | Juni 2028 
+
+
+ a| 
+link:https://docs.netapp.com/us-en/trident-2502/index.html["25,02"^]
+| Februar 2026 | Februar 2027 | Februar 2028 
+
+
+ a| 
+link:https://docs.netapp.com/us-en/trident-2410/index.html["24,10"^]
+| -- | Oktober 2026 | Oktober 2027 
+
+
+ a| 
+link:https://docs.netapp.com/us-en/trident-2406/index.html["24,06"^]
+| -- | Juni 2026 | Juni 2027 
+
+
+ a| 
+link:https://docs.netapp.com/us-en/trident-2402/index.html["24,02"^]
+| -- | Februar 2026 | Februar 2027 
+
+
+ a| 
+link:https://docs.netapp.com/us-en/trident-2310/index.html["23,10"^]
+| -- | -- | Oktober 2026 
+
+
+ a| 
+link:https://docs.netapp.com/us-en/trident-2307/index.html["23,07"^]
+| -- | -- | Juli 2026 
+|===
+
+
+[[self-support]]
+== Selbsthilfe
+
+Eine vollständige Liste der Artikel zur Fehlerbehebung finden Sie unter https://kb.netapp.com/Advice_and_Troubleshooting/Cloud_Services/Trident_Kubernetes["NetApp Knowledgebase (Anmeldung erforderlich)"^].
+
+
+
+[[community-support]]
+== Community-Support
+
+Es gibt eine lebendige öffentliche Community von Container-Nutzern (einschließlich Trident-Entwicklern) auf unserer link:https://discord.gg/NetApp["Discord-Kanal"^]. Dies ist ein großartiger Ort, um allgemeine Fragen zum Projekt zu stellen und verwandte Themen mit Gleichgesinnten zu diskutieren.
+
+
+
+[[netapp-technical-support]]
+== NetApp technische Unterstützung
+
+Um Hilfe mit Trident zu erhalten, erstellen Sie ein Support-Bundle mit  `tridentctl logs -a -n trident` und senden Sie es an  `NetApp Support <Getting Help>`.
+
+
+
+[[for-more-information]]
+== Für weitere Informationen
+
+* link:https://github.com/NetApp/trident["Trident-Ressourcen"^]
+* link:https://www.netapp.com/console/["Kubernetes Hub"^]
+

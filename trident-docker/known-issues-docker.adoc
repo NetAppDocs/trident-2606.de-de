@@ -1,0 +1,68 @@
+---
+sidebar: sidebar 
+permalink: trident-docker/known-issues-docker.html 
+keywords: known issues, trident, trident for docker, docker 
+summary: Hier finden Sie Informationen zu bekannten Problemen bei der Verwendung von Trident mit Docker. 
+---
+= Bekannte Probleme und Einschränkungen
+:hardbreaks:
+:allow-uri-read: 
+:icons: font
+:imagesdir: ../media/
+
+
+[role="lead"]
+Hier finden Sie Informationen zu bekannten Problemen und Einschränkungen bei der Verwendung von Trident mit Docker.
+
+
+
+[[upgrading-trident-docker-volume-plugin-to-20-10-and-later-from-older-versions-results-in-upgrade-failure-with-the-no-such-file-or-directory-error]]
+== Das Upgrade des Trident Docker Volume Plugin auf 20.10 und höher von älteren Versionen führt zu einem Upgrade-Fehler mit der Fehlermeldung no such file or directory.
+
+.Problemumgehung
+. Deaktivieren Sie das Plugin.
++
+[source, console]
+----
+docker plugin disable -f netapp:latest
+----
+. Entfernen Sie das Plugin.
++
+[source, console]
+----
+docker plugin rm -f netapp:latest
+----
+. Installieren Sie das Plugin erneut, indem Sie den zusätzlichen  `config` Parameter angeben.
++
+[source, console]
+----
+docker plugin install netapp/trident-plugin:20.10 --alias netapp --grant-all-permissions config=config.json
+----
+
+
+
+
+[[volume-names-must-be-a-minimum-of-2-characters-in-length]]
+== Volume-Namen müssen mindestens 2 Zeichen lang sein.
+
+
+NOTE: Dies ist eine Einschränkung des Docker-Clients. Der Client interpretiert einen einstelligen Namen als Windows-Pfad https://github.com/moby/moby/issues/25773["Siehe Bug 25773"^].
+
+
+
+[[docker-swarm-has-certain-behaviors-that-prevent-trident-from-supporting-it-with-every-storage-and-driver-combination]]
+== Docker Swarm weist bestimmte Verhaltensweisen auf, die Trident daran hindern, es mit jeder Speicher- und Treiberkombination zu unterstützen.
+
+* Docker Swarm verwendet derzeit den Volumennamen anstelle der Volume-ID als eindeutigen Volume-Bezeichner.
+* Volumenanforderungen werden gleichzeitig an jeden Knoten in einem Swarm-Cluster gesendet.
+* Volume-Plugins (einschließlich Trident) müssen auf jedem Knoten eines Swarm-Clusters unabhängig ausgeführt werden. Aufgrund der Funktionsweise von ONTAP und wie die  `ontap-nas` und  `ontap-san` Treiber funktionieren, sind sie die einzigen, die in der Lage sind, innerhalb dieser Einschränkungen zu arbeiten.
+
+
+Die übrigen Treiber sind Problemen wie Race Conditions ausgesetzt, die dazu führen können, dass für eine einzelne Anfrage eine große Anzahl von Volumes erstellt wird, ohne dass es einen klaren "Gewinner" gibt; beispielsweise verfügt Element über eine Funktion, die es ermöglicht, dass Volumes den gleichen Namen, aber unterschiedliche IDs haben.
+
+NetApp has dem Docker-Team Feedback gegeben, aber es gibt keine Hinweise auf zukünftige Maßnahmen.
+
+
+
+[[if-a-flexgroup-is-being-provisioned-ontap-does-not-provision-a-second-flexgroup-if-the-second-flexgroup-has-one-or-more-aggregates-in-common-with-the-flexgroup-being-provisioned]]
+== Wenn ein FlexGroup bereitgestellt wird, stellt ONTAP kein zweites FlexGroup bereit, wenn das zweite FlexGroup ein oder mehrere Aggregate mit dem FlexGroup, das bereitgestellt wird, gemeinsam hat.

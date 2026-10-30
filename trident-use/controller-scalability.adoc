@@ -1,0 +1,298 @@
+---
+sidebar: sidebar 
+permalink: trident-use/controller-scalability.html 
+keywords: trident, controller scalability, concurrency, san, nas, san-nvme, gcnv, ontap-nas-economy, ontap-san-economy, asa-r2 
+summary: Verstehen Sie die Skalierbarkeit des Controllers, das Verhalten bei gleichzeitiger Ausführung und den Reifegrad der Funktionen. 
+---
+= Controller-Skalierbarkeit
+:hardbreaks:
+:allow-uri-read: 
+:icons: font
+:imagesdir: ../media/
+
+
+[role="lead"]
+Trident verbessert die Controller Skalierbarkeit durch erhöhte Parallelität über mehrere Speichertreiber hinweg. Bei aktivierter Controller Skalierbarkeit verarbeitet der Trident Controller Speicheroperationen parallel statt sie zu serialisieren, was den Durchsatz in Kubernetes-Umgebungen mit vielen gleichzeitigen Operationen erhöht.
+
+Vor der Bereitstellung sollte ermittelt werden, welche Trident-Treiber die Controller Skalierbarkeit bei allgemeiner Verfügbarkeit unterstützen und welche Treiber in Trident 26.06 als technische Vorschau verfügbar sind. Dies unterstützt fundierte Entscheidungen zur Bereitstellung und ein effektives Risikomanagement. Die Controller Skalierbarkeit ist standardmäßig deaktiviert.
+
+
+
+[[key-concepts-and-definitions]]
+== Schlüsselbegriffe und Definitionen
+
+
+
+[[controller-scalability]]
+=== Controller-Skalierbarkeit
+
+Controller-Skalierbarkeit bezeichnet die Fähigkeit des Trident Controllers, mehrere Speicheroperationen parallel zu verarbeiten, anstatt sie hinter einer einzigen Sperre zu serialisieren. Zu diesen Operationen gehören das Erstellen, Löschen und Ändern der Größe von Volumes, das Erstellen und Löschen von Snapshots, das Veröffentlichen und Aufheben der Veröffentlichung von Volumes sowie die Backend-Verwaltung.
+
+Wenn die Controller-Skalierbarkeit aktiviert ist, werden Vorgänge auf verschiedenen Volumes und Backends gleichzeitig ausgeführt. Dadurch wird der Durchsatz erhöht und die End-to-End-Betriebszeit in Umgebungen mit einer hohen Anzahl gleichzeitiger PersistentVolumeClaim und VolumeSnapshot Vorgänge reduziert.
+
+
+
+[[default-behavior-serial-mode]]
+== Standardverhalten (serieller Modus)
+
+Standardmäßig verarbeitet der Trident-Controller Operationen nacheinander. Jede Anfrage zum Erstellen, Löschen, Ändern der Größe oder Erstellen eines Snapshots wird abgeschlossen, bevor Trident die nächste startet. Der serielle Modus ist die unterstützte Standardeinstellung für alle Installationen und erfordert keine Konfiguration.
+
+Der serielle Modus ist für die meisten Arbeitslasten ausreichend. Die Controller Skalierbarkeit sollte nur aktiviert werden, wenn das Verarbeitungsvolumen bei der seriellen Verarbeitung zu einem Rückstau führt.
+
+
+
+[[controller-scalability-support]]
+== Unterstützung der Controller-Skalierbarkeit
+
+Trident unterstützt die Skalierbarkeit des Controllers auf unterschiedlichen Reifegraden für verschiedene Speichertreiber.
+
+
+
+[[general-availability]]
+=== Allgemeine Verfügbarkeit
+
+Die folgenden Treiber unterstützen die Controller-Skalierbarkeit bei allgemeiner Verfügbarkeit in Trident 26.06:
+
+* `ontap-san`
+* `ontap-nas`
+* `ontap-nas-economy`
+* `ontap-san-economy`
+* `google-cloud-netapp-volumes`
+* `azure-netapp-files`
+* `solidfire-san`
+
+
+[NOTE]
+====
+Die  `google-cloud-netapp-volumes` und  `google-cloud-netapp-volumes-san` Treiber unterscheiden sich. Trident unterstützt nur  `google-cloud-netapp-volumes`.  `google-cloud-netapp-volumes-san` sollte in Backend-Konfigurationen oder Beispielen nicht verwendet werden.
+
+====
+
+
+[[technical-preview]]
+=== Technische Vorschau
+
+Der folgende Treiber unterstützt die Controller Skalierbarkeit als technische Vorschaufunktion in Trident 26.06:
+
+* `asa-r2` (SAN und NVMe)
+
+
+Dieser Treiber hat folgende Einschränkungen:
+
+* Die Controller-Parallelität ist nur zu Evaluierungs- und Testzwecken verfügbar.
+* Das Verhalten kann sich von einer Version zur nächsten ändern.
+* NetApp empfiehlt die Verwendung in Produktionsumgebungen nicht.
+
+
+
+
+[[how-enableconcurrency-works]]
+== Wie enableConcurrency funktioniert
+
+Wenn  `enableConcurrency` auf  `true` gesetzt wird, wendet Trident parallele Verarbeitung auf alle vom Controller verwalteten Backends an. Die Einstellung gilt für alle Backends gleichzeitig. Eine Aktivierung für einzelne Backends oder einzelne Treiber ist nicht möglich.
+
+Jedes konfigurierte Backend muss einen Treiber aus der Liste der allgemein verfügbaren oder der technischen Vorschauversionen verwenden. Falls ein Backend einen nicht unterstützten Treiber verwendet, startet Trident nicht und fügt auch kein Backend hinzu, das einen nicht unterstützten Treiber verwendet.
+
+Um den Startvorgang wiederherzustellen, müssen alle Backends entfernt oder neu konfiguriert werden, die einen nicht unterstützten Treiber verwenden, oder die Controller Skalierbarkeit wird deaktiviert.
+
+
+
+[[before-you-enable]]
+== Bevor Sie aktivieren
+
+[IMPORTANT]
+====
+Bevor Sie die Controller Skalierbarkeit aktivieren, vergewissern Sie sich, dass jedes konfigurierte Backend einen Treiber aus der Liste der allgemein verfügbaren oder technischen Vorschauversionen verwendet. Falls ein Backend einen nicht unterstützten Treiber verwendet, startet Trident nach der Aktivierung der Funktion nicht.
+
+====
+Die folgende Tabelle unterstützt die Entscheidung, ob die Controller Skalierbarkeit aktiviert werden soll.
+
+[cols="1,1"]
+|===
+| Wenn Ihre Umgebung | Dann 
+
+
+| Verwendet nur unterstützte Treiber und weist einen Rückstau bei Controller-Operationen auf | Controller-Skalierbarkeit aktivieren. 
+
+
+| Verwendet einen nicht unterstützten Treiber | Der standardmäßige serielle Modus bleibt erhalten. Die Controller-Skalierbarkeit nicht aktivieren. 
+
+
+| Bewältigt geringes Arbeitsaufkommen ohne Rückstände | Der standardmäßige serielle Modus bleibt erhalten. 
+|===
+
+
+[[enable-controller-scalability]]
+== Controller-Skalierbarkeit aktivieren
+
+Die `enableConcurrency` Konfigurationsoption steuert die Skalierbarkeit des Controllers. Diese Option muss während der Trident Installation oder bei der Aktualisierung einer bestehenden Bereitstellung explizit aktiviert werden.
+
+
+
+[[trident-operator-deployment]]
+=== Trident Operator-Bereitstellung
+
+Um die Controller Skalierbarkeit mit dem Trident Operator zu ermöglichen,  `enableConcurrency` auf  `true` in der  `TridentOrchestrator` benutzerdefinierten Ressource (CR) setzen.
+
+
+
+==== Neuinstallation
+
+Erstellen oder bearbeiten Sie die  `TridentOrchestrator` CR und setzen Sie  `enableConcurrency` auf  `true`:
+
+[source, yaml]
+----
+apiVersion: trident.netapp.io/v1
+kind: TridentOrchestrator
+metadata:
+  name: trident
+spec:
+  namespace: trident
+  enableConcurrency: true
+----
+Wenden Sie die CR an:
+
+[source, console]
+----
+kubectl apply -f tridentorchestrator_cr.yaml
+----
+
+
+==== Vorhandene Installation
+
+Patchen Sie die bestehende  `TridentOrchestrator`CR, um die Skalierbarkeit des Controllers zu ermöglichen:
+
+[source, console]
+----
+kubectl patch torc trident --type=merge -p '{"spec":{"enableConcurrency":true}}'
+----
+Es sollte überprüft werden, ob Trident die Einstellung angewendet hat:
+
+[source, console]
+----
+kubectl get torc trident -o jsonpath='{.status.currentInstallationParams.enableConcurrency}'
+----
+
+
+[[helm-deployment]]
+=== Helm-Bereitstellung
+
+Um die Controller-Skalierbarkeit mit Helm zu aktivieren, setzen Sie den  `enableConcurrency` Wert auf  `true`.
+
+
+
+==== Neuinstallation
+
+[source, console]
+----
+helm install trident netapp-trident/trident-operator --namespace trident --create-namespace --set enableConcurrency=true
+----
+
+
+==== Vorhandene Installation
+
+[source, console]
+----
+helm upgrade trident netapp-trident/trident-operator --namespace trident --set enableConcurrency=true
+----
+Alternativ setzen Sie  `enableConcurrency` auf  `true` in einer benutzerdefinierten  `values.yaml` Datei:
+
+[source, yaml]
+----
+# values.yaml
+enableConcurrency: true
+----
+Anschließend mit der Wertedatei installieren oder aktualisieren:
+
+[source, console]
+----
+helm install trident netapp-trident/trident-operator --namespace trident --create-namespace -f values.yaml
+----
+
+
+[[tridentctl-deployment]]
+=== tridentctl-Bereitstellung
+
+Um die Skalierbarkeit des Controllers mit `tridentctl` zu ermöglichen, übergeben Sie das `--enable-concurrency` Flag während der Installation.
+
+
+
+==== Neuinstallation
+
+[source, console]
+----
+tridentctl install -n trident --enable-concurrency
+----
+
+
+==== Vorhandene Installation
+
+Um die Controller Skalierbarkeit in einer bestehenden  `tridentctl` Bereitstellung zu aktivieren, muss Trident deinstalliert und anschließend mit dem Flag erneut installiert werden:
+
+[source, console]
+----
+tridentctl uninstall -n trident
+tridentctl install -n trident --enable-concurrency
+----
+
+
+[[verify-that-controller-scalability-is-enabled]]
+=== Überprüfen, ob die Controller Skalierbarkeit aktiviert ist
+
+Nachdem Sie die Controller Skalierbarkeit aktiviert haben, sollte überprüft werden, ob der Trident Controller mit aktivierter Parallelverarbeitung ausgeführt wird. Die Pod-Logs des Controllers können überprüft werden:
+
+[source, console]
+----
+kubectl logs -n trident deploy/trident-controller | grep -i concurrency
+----
+Die Ausgabe enthält einen Protokolleintrag, der bestätigt, dass die Parallelverarbeitung aktiviert ist.
+
+
+
+[[concurrency-behavior]]
+== Parallelitätsverhalten
+
+Wenn die Controller-Skalierbarkeit aktiviert ist, wendet der Trident-Controller das folgende Verhalten an:
+
+* Trident ersetzt die einzelne globale Sperre durch eine feingranulare, ressourcenbezogene Sperrung.
+* Trident serialisiert Operationen, die dieselbe Ressource verändern, um die Datenkonsistenz zu gewährleisten.
+* Operationen, die nur von einer Ressource lesen, laufen gleichzeitig mit anderen Leseoperationen auf dieser Ressource ab.
+* Trident begrenzt gleichzeitige ONTAP-API-Anfragen auf 20 pro Management-LIF, um eine Überlastung der Backend-Speichersysteme zu verhindern.
+* Wenn mehrere Backends dieselbe Management-LIF verwenden, teilen sie sich dieses Limit von 20 Anfragen.
+
+
+
+
+[[caveats-and-limitations]]
+== Vorbehalte und Einschränkungen
+
+Für die Skalierbarkeit von Controllern in Trident 26.06 gelten folgende Überlegungen:
+
+* Die Controller Skalierbarkeit unterstützt nur die Treiber, die in den Listen für allgemeine Verfügbarkeit und technische Vorschau aufgeführt sind. Einzelheiten enthält <<before-you-enable,Bevor Sie aktivieren>>.
+* Der Trident Controller verwaltet die Parallelverarbeitung intern. Diese Version bietet keine vom Benutzer konfigurierbaren Parallelitätsgrenzen.
+* Der Gesamtdurchsatz hängt vom verwendeten Speichertreiber, der Reaktionsfähigkeit des Backends und der Leistung des Kubernetes API-Servers ab.
+* Hohe Parallelität kann die Belastung der Backend-Speichersysteme erhöhen.
+* Das Skalierbarkeitsverhalten des Controllers ist nicht bei allen Treibern identisch.
+* Der Treiber in der technischen Vorschau kann unter hoher Last eine inkonsistente Performance aufweisen und das Verhalten kann sich zwischen den Versionen ändern.
+* Die Fehlersuche bei gleichzeitig laufenden Operationen kann aufgrund der parallelen Ausführung komplexer sein. Metriken und Protokolle können verschachtelte Operationsausgaben anzeigen.
+
+
+
+
+[[recommendations]]
+== Empfehlungen
+
+Bevor Sie die Controller Skalierbarkeit aktivieren, sind die folgenden Schritte abzuschließen:
+
+. Bestätigt werden muss, dass jedes konfigurierte Backend einen Treiber aus der Liste der allgemein verfügbaren oder technischen Vorschau-Treiber verwendet.
+. Die Änderung sollte in einem Nicht-Produktionscluster getestet werden, bevor sie in der Produktionsumgebung angewendet wird.
+. Es sollte sichergestellt sein, dass die Controller Skalierbarkeit nach der Anwendung der Änderung aktiviert ist.
+
+
+Die folgenden allgemeinen Empfehlungen sind beim Betrieb mit Controller-Skalierbarkeit zu berücksichtigen:
+
+* Allgemein verfügbare Treiber eignen sich für Produktionsumgebungen, die eine hohe Skalierbarkeit erfordern.
+* Der technische Vorschau-Treiber ist ausschließlich in Nicht-Produktionsumgebungen zu evaluieren.
+* Die Backend- und Controller-Performance bei großem Maßstab im Blick behalten.
+* In Automatisierungsskripten sollte nicht von einer bestimmten Reihenfolge der Vorgänge ausgegangen werden.
+

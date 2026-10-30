@@ -1,0 +1,104 @@
+---
+sidebar: sidebar 
+permalink: trident-use/manage-stor-class.html 
+keywords: storage class, manage storage class, storage classes, kubernetes storage classes 
+summary: Sie können vorhandene Speicherklassen anzeigen, eine Standard-Speicherklasse festlegen, die Speicherklassen-Backends identifizieren und Speicherklassen löschen. 
+---
+= Verwalten von Trident Storage Klassen
+:hardbreaks:
+:allow-uri-read: 
+:icons: font
+:imagesdir: ../media/
+
+
+[role="lead"]
+Sie können vorhandene Speicherklassen anzeigen, eine Standard-Speicherklasse festlegen, die Speicherklassen-Backends identifizieren und Speicherklassen löschen.
+
+
+
+[[view-the-existing-storage-classes]]
+== Vorhandene Speicherklassen anzeigen
+
+* Um vorhandene Kubernetes-Speicherklassen anzuzeigen, führen Sie den folgenden Befehl aus:
+
+
+[listing]
+----
+kubectl get storageclass
+----
+* Um Details zur Kubernetes-Speicherklasse anzuzeigen, führen Sie den folgenden Befehl aus:
+
+
+[listing]
+----
+kubectl get storageclass <storage-class> -o json
+----
+* Um die synchronisierten Speicherklassen von Trident anzuzeigen, führen Sie den folgenden Befehl aus:
+
+
+[listing]
+----
+tridentctl get storageclass
+----
+* Um die Details der synchronisierten Speicherklasse von Trident anzuzeigen, führen Sie den folgenden Befehl aus:
+
+
+[listing]
+----
+tridentctl get storageclass <storage-class> -o json
+----
+
+
+[[set-a-default-storage-class]]
+== Legen Sie eine Standardspeicherklasse fest
+
+Kubernetes 1.6 führte die Möglichkeit ein, eine Standard-Speicherklasse festzulegen. Dies ist die Speicherklasse, die für die Bereitstellung eines Persistent Volume verwendet wird, wenn ein Benutzer in einem Persistent Volume Claim (PVC) keine angibt.
+
+* Definieren Sie eine Standard-Speicherklasse, indem Sie die Annotation  `storageclass.kubernetes.io/is-default-class` auf true in der Speicherklassendefinition setzen. Gemäß der Spezifikation wird jeder andere Wert oder das Fehlen der Annotation als false interpretiert.
+* Sie können eine vorhandene Speicherklasse als Standardspeicherklasse konfigurieren, indem Sie den folgenden Befehl verwenden:
+
+
+[listing]
+----
+kubectl patch storageclass <storage-class-name> -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+----
+* Ebenso können Sie die Standard-Speicherklassenannotation mit dem folgenden Befehl entfernen:
+
+
+[listing]
+----
+kubectl patch storageclass <storage-class-name> -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}'
+----
+Im Trident-Installationspaket sind auch Beispiele enthalten, die diese Annotation enthalten.
+
+
+NOTE: Es sollte immer nur eine Standard-Speicherklasse in Ihrem Cluster vorhanden sein. Kubernetes verhindert dies technisch zwar nicht, aber es verhält sich so, als gäbe es überhaupt keine Standard-Speicherklasse.
+
+
+
+[[identify-the-backend-for-a-storage-class]]
+== Identifizieren Sie das Backend für eine Storage Class
+
+Dies ist ein Beispiel für die Art von Fragen, die Sie mit dem JSON, das  `tridentctl` für Trident Backend-Objekte ausgibt, beantworten können. Dies verwendet das  `jq` Hilfsprogramm, das Sie möglicherweise zuerst installieren müssen.
+
+[listing]
+----
+tridentctl get storageclass -o json | jq  '[.items[] | {storageClass: .Config.name, backends: [.storage]|unique}]'
+----
+
+
+[[delete-a-storage-class]]
+== Eine Storage Class löschen
+
+Um eine Speicherklasse aus Kubernetes zu löschen, führen Sie den folgenden Befehl aus:
+
+[listing]
+----
+kubectl delete storageclass <storage-class>
+----
+`<storage-class>` sollte durch Ihre Speicherklasse ersetzt werden.
+
+Alle persistenten Volumes, die über diese Speicherklasse erstellt wurden, bleiben unberührt, und Trident wird sie weiterhin verwalten.
+
+
+NOTE: Trident erzwingt ein `fsType` für die von ihm erstellten Volumes. Für iSCSI-Backends wird empfohlen,  `parameters.fsType` in der StorageClass zu erzwingen. Sie sollten vorhandene StorageClasses löschen und sie mit  `parameters.fsType` neu erstellen.

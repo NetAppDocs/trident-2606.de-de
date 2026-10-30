@@ -1,0 +1,270 @@
+---
+sidebar: sidebar 
+permalink: trident-docker/prereqs-docker.html 
+keywords: deploy, Trident, docker, trident for docker, nfs, iscsi, protcol, nfs protocol, iscsi protocol, configure host, host config, nvme tcp, fc, nvme 
+summary: Sie müssen die erforderlichen Protokollvoraussetzungen auf Ihrem Host installieren und konfigurieren, bevor Sie Trident bereitstellen können. 
+---
+= Voraussetzungen für die Bereitstellung
+:hardbreaks:
+:allow-uri-read: 
+:icons: font
+:imagesdir: ../media/
+
+
+[role="lead"]
+Sie müssen die erforderlichen Protokollvoraussetzungen auf Ihrem Host installieren und konfigurieren, bevor Sie Trident bereitstellen können.
+
+
+
+[[verify-the-requirements]]
+== Überprüfen Sie die Anforderungen
+
+* Vergewissern Sie sich, dass Ihre Bereitstellung alle link:../trident-get-started/requirements.html["Anforderungen"] erfüllt.
+* Vergewissern Sie sich, dass Sie eine unterstützte Version von Docker installiert haben. Falls Ihre Docker-Version veraltet ist, https://docs.docker.com/engine/install/["installieren oder aktualisieren"^].
++
+[source, console]
+----
+docker --version
+----
+* Vergewissern Sie sich, dass die Protokollvoraussetzungen auf Ihrem Host installiert und konfiguriert sind.
+
+
+
+
+[[nfs-tools]]
+=== NFS-Tools
+
+Installieren Sie die NFS-Tools mithilfe der Befehle für Ihr Betriebssystem.
+
+[role="tabbed-block"]
+====
+.RHEL 8+
+--
+[source, console]
+----
+sudo yum install -y nfs-utils
+----
+--
+.Ubuntu
+--
+[source, console]
+----
+sudo apt-get install -y nfs-common
+----
+--
+====
+
+WARNING: Starten Sie Ihre Worker-Knoten nach der Installation der NFS-Tools neu, um Fehler beim Anhängen von Volumes an Container zu vermeiden.
+
+
+
+[[iscsi-tools]]
+=== iSCSI-Tools
+
+Installieren Sie die iSCSI-Tools mit den Befehlen für Ihr Betriebssystem.
+
+[role="tabbed-block"]
+====
+.RHEL 8+
+--
+. Installieren Sie die folgenden Systempakete:
++
+[source, console]
+----
+sudo yum install -y lsscsi iscsi-initiator-utils sg3_utils device-mapper-multipath
+----
+. Prüfen Sie, ob die Version von iscsi-initiator-utils 6.2.0.874-2.el7 oder höher ist:
++
+[source, console]
+----
+rpm -q iscsi-initiator-utils
+----
+. Scanvorgang auf manuell einstellen:
++
+[source, console]
+----
+sudo sed -i 's/^\(node.session.scan\).*/\1 = manual/' /etc/iscsi/iscsid.conf
+----
+. Multipathing aktivieren:
++
+[source, console]
+----
+sudo mpathconf --enable --with_multipathd y --find_multipaths n
+----
++
+
+NOTE: Stellen Sie sicher, dass  `etc/multipath.conf`  `find_multipaths no` unter  `defaults` enthalten ist.
+
+. Stellen Sie sicher, dass  `iscsid` und  `multipathd` ausgeführt werden:
++
+[source, console]
+----
+sudo systemctl enable --now iscsid multipathd
+----
+. Aktivieren und starten `iscsi`:
++
+[source, console]
+----
+sudo systemctl enable --now iscsi
+----
+
+
+--
+.Ubuntu
+--
+. Installieren Sie die folgenden Systempakete:
++
+[source, console]
+----
+sudo apt-get install -y open-iscsi lsscsi sg3-utils multipath-tools scsitools
+----
+. Prüfen Sie, ob die open-iscsi-Version 2.0.874-5ubuntu2.10 oder höher (für bionic) oder 2.0.874-7.1ubuntu6.1 oder höher (für focal) ist:
++
+[source, console]
+----
+dpkg -l open-iscsi
+----
+. Scanvorgang auf manuell einstellen:
++
+[source, console]
+----
+sudo sed -i 's/^\(node.session.scan\).*/\1 = manual/' /etc/iscsi/iscsid.conf
+----
+. Multipathing aktivieren:
++
+[source, console]
+----
+sudo tee /etc/multipath.conf <<-EOF
+defaults {
+    user_friendly_names yes
+    find_multipaths no
+}
+EOF
+sudo systemctl enable --now multipath-tools.service
+sudo service multipath-tools restart
+----
++
+
+NOTE: Stellen Sie sicher, dass  `etc/multipath.conf`  `find_multipaths no` unter  `defaults` enthalten ist.
+
+. Stellen Sie sicher, dass  `open-iscsi` und  `multipath-tools` aktiviert sind und ausgeführt werden:
++
+[source, console]
+----
+sudo systemctl status multipath-tools
+sudo systemctl enable --now open-iscsi.service
+sudo systemctl status open-iscsi
+----
+
+
+--
+====
+
+
+[[nvme-tools]]
+== NVMe-Tools
+
+Installieren Sie die NVMe-Tools mit den Befehlen für Ihr Betriebssystem.
+
+[NOTE]
+====
+* NVMe erfordert RHEL 9 oder neuer.
+* Falls die Kernelversion Ihres Kubernetes-Knotens zu alt ist oder das NVMe-Paket für Ihre Kernelversion nicht verfügbar ist, müssen Sie möglicherweise die Kernelversion Ihres Knotens auf eine Version mit dem NVMe-Paket aktualisieren.
+
+
+====
+[role="tabbed-block"]
+====
+.RHEL 9
+--
+[source, console]
+----
+sudo yum install nvme-cli
+sudo yum install linux-modules-extra-$(uname -r)
+sudo modprobe nvme-tcp
+----
+--
+.Ubuntu
+--
+[source, console]
+----
+sudo apt install nvme-cli
+sudo apt -y install linux-modules-extra-$(uname -r)
+sudo modprobe nvme-tcp
+----
+--
+====
+
+
+[[fc-tools]]
+== FC-Tools
+
+Installieren Sie die FC-Tools mithilfe der Befehle für Ihr Betriebssystem.
+
+* Bei Verwendung von Worker-Knoten, auf denen RHEL/Red Hat Enterprise Linux CoreOS (RHCOS) mit FC-PVs ausgeführt werden, geben Sie die  `discard` mountOption in der StorageClass an, um die Inline-Speicherplatzfreigabe durchzuführen. Weitere Informationen sind unter https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/managing_file_systems/discarding-unused-blocks_managing-file-systems["Red Hat Dokumentation"^] zu finden.
+
+
+[role="tabbed-block"]
+====
+.RHEL 8+
+--
+. Installieren Sie die folgenden Systempakete:
++
+[source, console]
+----
+sudo yum install -y lsscsi device-mapper-multipath
+----
+. Multipathing aktivieren:
++
+[source, console]
+----
+sudo mpathconf --enable --with_multipathd y --find_multipaths n
+----
++
+
+NOTE: Stellen Sie sicher, dass  `etc/multipath.conf`  `find_multipaths no` unter  `defaults` enthalten ist.
+
+. Stellen Sie sicher, dass  `multipathd` läuft:
++
+[source, console]
+----
+sudo systemctl enable --now multipathd
+----
+
+
+--
+.Ubuntu
+--
+. Installieren Sie die folgenden Systempakete:
++
+[source, console]
+----
+sudo apt-get install -y lsscsi sg3-utils multipath-tools scsitools
+----
+. Multipathing aktivieren:
++
+[source, console]
+----
+sudo tee /etc/multipath.conf <<-EOF
+defaults {
+    user_friendly_names yes
+    find_multipaths no
+}
+EOF
+sudo systemctl enable --now multipath-tools.service
+sudo service multipath-tools restart
+----
++
+
+NOTE: Stellen Sie sicher, dass  `etc/multipath.conf`  `find_multipaths no` unter  `defaults` enthalten ist.
+
+. Stellen Sie sicher, dass  `multipath-tools` aktiviert ist und ausgeführt wird:
++
+[source, console]
+----
+sudo systemctl status multipath-tools
+----
+
+
+--
+====

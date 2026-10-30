@@ -1,0 +1,93 @@
+---
+sidebar: sidebar 
+permalink: trident-protect/trident-protect-upgrade.html 
+keywords: trident, protect, netapp, upgrade, new, version 
+summary: Sie können Trident Protect auf die neueste Version aktualisieren, um neue Funktionen oder Fehlerbehebungen zu nutzen. 
+---
+= Trident Protect aktualisieren
+:hardbreaks:
+:allow-uri-read: 
+:nofooter: 
+:icons: font
+:linkattrs: 
+:imagesdir: ../media/
+
+
+[role="lead"]
+Sie können Trident Protect auf die neueste Version aktualisieren, um neue Funktionen oder Fehlerbehebungen zu nutzen.
+
+[NOTE]
+====
+* Beim Upgrade von Version 24.10 kann es vorkommen, dass während des Upgrades laufende Snapshots fehlschlagen. Dieses Fehlschlagen verhindert nicht, dass zukünftige Snapshots, egal ob manuell oder geplant, erstellt werden können. Wenn ein Snapshot während des Upgrades fehlschlägt, können Sie manuell einen neuen Snapshot erstellen, um sicherzustellen, dass Ihre Anwendung geschützt ist.
++
+Um mögliche Fehler zu vermeiden, können Sie vor dem Upgrade alle Snapshot-Zeitpläne deaktivieren und sie danach wieder aktivieren. Dies führt jedoch dazu, dass während des Upgrade-Zeitraums geplante Snapshots fehlen.
+
+* Bei Installationen in privaten Registrys stellen Sie sicher, dass das erforderliche Helm-Chart und die Images für die Zielversion in Ihrer privaten Registry verfügbar sind, und überprüfen Sie, ob Ihre benutzerdefinierten Helm-Werte mit der neuen Chart-Version kompatibel sind. Weitere Informationen finden Sie unter link:trident-protect-installation.html["Installieren Sie Trident Protect aus einem privaten Registry."].
+
+
+====
+
+
+[[step-1-select-a-version]]
+== Schritt 1: Wählen Sie eine Version
+
+Trident Protect-Versionen folgen einer datumsbasierten `YY.MM` Namenskonvention, wobei „YY“ die letzten beiden Ziffern des Jahres und „MM“ der Monat sind. Dot-Releases folgen einer `YY.MM.X` Konvention, wobei „X“ das Patch-Level ist. Sie wählen die Version aus, auf die Sie aktualisieren möchten, basierend auf der Version, von der Sie aktualisieren.
+
+* Sie können ein direktes Upgrade auf jede Zielversion durchführen, die innerhalb eines Vier-Versions-Fensters Ihrer installierten Version liegt. Beispielsweise können Sie direkt von 24.10 (oder jeder 24.10 dot release) auf 25.10 aktualisieren.
+* Bei einer Aktualisierung von einer Version außerhalb des Vier-Versions-Fensters ist ein mehrstufiges Upgrade erforderlich. Maßgeblich für das Upgrade auf die neueste Version innerhalb des Vier-Versions-Fensters sind die Upgrade-Anweisungen für die link:../earlier-versions.html["frühere Version"] Version, von der aus die Aktualisierung erfolgt. Beispiel: Wenn Sie Version 24.10 verwenden und auf 26.06 aktualisieren möchten:
++
+.. Erstes Upgrade von 24.10 auf 25.02.
+.. Führen Sie dann ein Upgrade von 25.02 auf 26.06 durch.
+
+
+
+
+
+
+[[step-2-upgrade-trident-protect]]
+== Schritt 2: Trident Protect aktualisieren
+
+Um Trident Protect zu aktualisieren, führen Sie die folgenden Schritte aus.
+
+.Schritte
+. Aktualisieren Sie das Trident Helm-Repository:
++
+[source, console]
+----
+helm repo update
+----
+. Aktualisieren Sie die Trident Protect CRDs:
++
+
+NOTE: Dieser Schritt ist erforderlich, wenn Sie von einer Version vor 25.06 aktualisieren, da die CRDs jetzt im Trident Protect Helm chart enthalten sind.
+
++
+.. Führen Sie diesen Befehl aus, um die Verwaltung von CRDs von  `trident-protect-crds` zu  `trident-protect` zu verschieben:
++
+[source, console]
+----
+kubectl get crd | grep protect.trident.netapp.io | awk '{print $1}' | xargs -I {} kubectl patch crd {} --type merge -p '{"metadata":{"annotations":{"meta.helm.sh/release-name": "trident-protect"}}}'
+----
+.. Führen Sie diesen Befehl aus, um das Helm-Secret für das  `trident-protect-crds` Chart zu löschen:
++
+
+NOTE: Deinstallieren Sie das  `trident-protect-crds` Chart nicht mit Helm, da dies Ihre CRDs und alle zugehörigen Daten entfernen könnte.
+
++
+[source, console]
+----
+kubectl delete secret -n trident-protect -l name=trident-protect-crds,owner=helm
+----
+
+
+. Trident Protect aktualisieren:
++
+[source, console]
+----
+helm upgrade trident-protect netapp-trident-protect/trident-protect --version 100.2606.0 --namespace trident-protect
+----
++
+
+NOTE: Sie können den Protokollierungsgrad während des Upgrades konfigurieren, indem Sie  `--set logLevel=debug` zum Upgrade-Befehl hinzufügen. Der Standard-Protokollierungsgrad ist  `warn`. Debug-Protokollierung wird für die Fehlerbehebung empfohlen, da sie NetApp Support hilft, Probleme zu diagnostizieren, ohne dass Änderungen am Protokollierungsgrad oder eine Problemreproduktion erforderlich sind.
+
+

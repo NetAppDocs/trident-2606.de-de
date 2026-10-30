@@ -1,0 +1,136 @@
+---
+sidebar: sidebar 
+permalink: trident-use/vol-custom-name.html 
+keywords: volumes, volume name, custom volume name, on-demand volume snapshots, expand volumes, iscsci volumes, nfs volumes, expand, expansion, 
+summary: 'Trident unterstützt die Vergabe aussagekräftiger Namen und Bezeichnungen für die erstellten Volumes, sodass deren Identifizierung, Überwachung, Verwaltung und die einfache Zuordnung der Volumes zu den jeweiligen Kubernetes-Ressourcen (PVCs) erleichtert wird.' 
+---
+= Anpassung von Trident Volume-Namen und Labels
+:hardbreaks:
+:allow-uri-read: 
+:icons: font
+:imagesdir: ../media/
+
+
+[role="lead"]
+Mit Trident können Sie den von Ihnen erstellten Volumes aussagekräftige Namen und Bezeichnungen zuweisen. Dies hilft Ihnen, Volumes zu identifizieren und sie einfach ihren jeweiligen Kubernetes-Ressourcen (PVCs) zuzuordnen. Sie können außerdem auf Backend-Ebene Vorlagen für benutzerdefinierte Volume-Namen und benutzerdefinierte Bezeichnungen definieren; alle Volumes, die Sie erstellen, importieren oder klonen, halten sich an diese Vorlagen.
+
+
+
+[[before-you-begin]]
+== Bevor Sie beginnen
+
+Unterstützung für anpassbare Volume-Namen und Labels:
+
+* Volume-Erstellungs-, Import- und Klonvorgänge.
+* Im Fall des  `ontap-nas-economy`-Treibers entspricht nur der Name des Qtree-Volumes der Namensvorlage.
+* Im Falle des `ontap-san-economy` Treibers entspricht nur der LUN-Name der Namensvorlage.
+
+
+
+
+[[limitations]]
+== Einschränkungen
+
+* Benutzerdefinierte Volumennamen sind nur mit ONTAP-Treibern für lokale Installationen kompatibel.
+* Benutzerdefinierte Bezeichnungen werden nur für die  `ontap-san`,  `ontap-nas` und  `ontap-nas-flexgroup` Treiber unterstützt.
+* Benutzerdefinierte Volumennamen gelten nicht für vorhandene Volumen.
+
+
+
+
+[[key-behaviors-of-customizable-volume-names]]
+== Wichtige Verhaltensweisen von anpassbaren Volumennamen
+
+* Tritt aufgrund ungültiger Syntax in einer Namensvorlage ein Fehler auf, schlägt die Backend-Erstellung fehl. Schlägt jedoch die Vorlagenanwendung fehl, wird das Volume gemäß der bestehenden Namenskonvention benannt.
+* Das Speicherpräfix ist nicht anwendbar, wenn ein Volume mithilfe einer Namensvorlage aus der Backend-Konfiguration benannt wird. Jeder gewünschte Präfixwert kann direkt zur Vorlage hinzugefügt werden.
+
+
+
+
+[[backend-configuration-examples-with-name-template-and-labels]]
+== Backend-Konfigurationsbeispiele mit Namensvorlage und Labels
+
+Benutzerdefinierte Namensvorlagen können auf Stamm- und/oder Poolebene definiert werden.
+
+.Beispiel auf Wurzelebene
+[source, json]
+----
+{
+  "version": 1,
+  "storageDriverName": "ontap-nas",
+  "backendName": "ontap-nfs-backend",
+  "managementLIF": "<ip address>",
+  "svm": "svm0",
+  "username": "<admin>",
+  "password": "<password>",
+  "defaults": {
+    "nameTemplate": "{{.volume.Name}}_{{.labels.cluster}}_{{.volume.Namespace}}_{{.volume.RequestName}}"
+  },
+  "labels": {
+    "cluster": "ClusterA",
+    "PVC": "{{.volume.Namespace}}_{{.volume.RequestName}}"
+  }
+}
+----
+.Beispiel auf Poolebene
+[source, json]
+----
+{
+  "version": 1,
+  "storageDriverName": "ontap-nas",
+  "backendName": "ontap-nfs-backend",
+  "managementLIF": "<ip address>",
+  "svm": "svm0",
+  "username": "<admin>",
+  "password": "<password>",
+  "useREST": true,
+  "storage": [
+    {
+      "labels": {
+        "labelname": "label1",
+        "name": "{{ .volume.Name }}"
+      },
+      "defaults": {
+        "nameTemplate": "pool01_{{ .volume.Name }}_{{ .labels.cluster }}_{{ .volume.Namespace }}_{{ .volume.RequestName }}"
+      }
+    },
+    {
+      "labels": {
+        "cluster": "label2",
+        "name": "{{ .volume.Name }}"
+      },
+      "defaults": {
+        "nameTemplate": "pool02_{{ .volume.Name }}_{{ .labels.cluster }}_{{ .volume.Namespace }}_{{ .volume.RequestName }}"
+      }
+    }
+  ]
+}
+----
+
+
+[[name-template-examples]]
+== Beispiele für Namensvorlagen
+
+*Beispiel 1*:
+
+[listing]
+----
+"nameTemplate": "{{ .config.StoragePrefix }}_{{ .volume.Name }}_{{ .config.BackendName }}"
+----
+*Beispiel 2*:
+
+[listing]
+----
+"nameTemplate": "pool_{{ .config.StoragePrefix }}_{{ .volume.Name }}_{{ slice .volume.RequestName 1 5 }}""
+----
+
+
+[[points-to-consider]]
+== Zu berücksichtigende Punkte
+
+. Bei Datenträgerimporten werden die Bezeichnungen nur dann aktualisiert, wenn der vorhandene Datenträger Bezeichnungen in einem bestimmten Format aufweist. Beispiel:  `{"provisioning":{"Cluster":"ClusterA", "PVC": "pvcname"}}`.
+. Bei verwalteten Volume-Importen folgt der Volume-Name der Namensvorlage, die auf der Root-Ebene in der Backend-Definition definiert ist.
+. Trident unterstützt die Verwendung eines Slice-Operators mit dem Speicherpräfix nicht.
+. Falls die Vorlagen keine eindeutigen Volume-Namen ergeben, fügt Trident einige zufällige Zeichen hinzu, um eindeutige Volume-Namen zu erstellen.
+. Wenn der benutzerdefinierte Name für ein NAS-Economy-Volume länger als 64 Zeichen ist, benennt Trident die Volumes gemäß der bestehenden Namenskonvention. Bei allen anderen ONTAP Treibern schlägt der Volume-Erstellungsprozess fehl, wenn der Volume-Name die Namensbeschränkung überschreitet.
+

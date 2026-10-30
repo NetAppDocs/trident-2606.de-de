@@ -1,0 +1,281 @@
+---
+sidebar: sidebar 
+permalink: trident-docker/deploy-docker.html 
+keywords: deploy, Trident, trident for docker, docker 
+summary: Trident für Docker bietet eine direkte Integration in das Docker-Ökosystem für NetApp Speicherplattformen. Es unterstützt die Bereitstellung und Verwaltung von Speicherressourcen von der Speicherplattform zu Docker-Hosts, mit einem Framework zur zukünftigen Hinzufügung weiterer Plattformen. 
+---
+= Trident bereitstellen
+:hardbreaks:
+:allow-uri-read: 
+:icons: font
+:imagesdir: ../media/
+
+
+[role="lead"]
+Trident für Docker bietet eine direkte Integration in das Docker-Ökosystem für NetApp Speicherplattformen. Es unterstützt die Bereitstellung und Verwaltung von Speicherressourcen von der Speicherplattform zu Docker-Hosts, mit einem Framework zur zukünftigen Hinzufügung weiterer Plattformen.
+
+Mehrere Instanzen von Trident können gleichzeitig auf demselben Host ausgeführt werden. Dies ermöglicht simultane Verbindungen zu mehreren Speichersystemen und Speichertypen sowie die Möglichkeit, den für die Docker-Volumes verwendeten Speicher anzupassen.
+
+.Was Sie benötigen
+Siehe link:prereqs-docker.html["Voraussetzungen für die Bereitstellung"]. Nachdem Sie sichergestellt haben, dass die Voraussetzungen erfüllt sind, sind Sie bereit, Trident bereitzustellen.
+
+
+
+[[docker-managed-plugin-method-version-1-1317-03-and-later]]
+== Docker-verwaltete Plugin-Methode (Version 1.13/17.03 und später)
+
+.Bevor Sie beginnen
+
+NOTE: Wenn Sie Trident vor Docker 1.13/17.03 in der traditionellen Daemon-Methode verwendet haben, stellen Sie sicher, dass Sie den Trident-Prozess stoppen und Ihren Docker daemon neu starten, bevor Sie die verwaltete Plugin-Methode verwenden.
+
+. Alle laufenden Instanzen stoppen:
++
+[source, console]
+----
+pkill /usr/local/bin/netappdvp
+pkill /usr/local/bin/trident
+----
+. Starten Sie Docker neu.
++
+[source, console]
+----
+systemctl restart docker
+----
+. Stellen Sie sicher, dass Sie Docker Engine 17.03 (new 1.13) oder höher installiert haben.
++
+[source, console]
+----
+docker --version
+----
++
+Falls Ihre Version veraltet ist https://docs.docker.com/engine/install/["Installieren oder aktualisieren Sie Ihre Installation"^].
+
+
+
+.Schritte
+. Erstellen Sie eine Konfigurationsdatei und geben Sie die Optionen wie folgt an:
++
+**  `config`: Der Standarddateiname ist `config.json`, jedoch können Sie jeden beliebigen Namen verwenden, indem Sie die `config` Option zusammen mit dem Dateinamen angeben. Die Konfigurationsdatei muss sich im `/etc/netappdvp` Verzeichnis auf dem Hostsystem befinden.
+** `log-level`: Geben Sie die Protokollierungsebene (`debug`, `info`, `warn`, `error`, `fatal`) an. Der Standardwert ist `info`.
+** `debug`: Gibt an, ob die Debug-Protokollierung aktiviert ist. Standardmäßig ist false. Überschreibt die Protokollierungsstufe, wenn true.
++
+... Erstellen Sie einen Speicherort für die Konfigurationsdatei:
++
+[source, console]
+----
+sudo mkdir -p /etc/netappdvp
+----
+... Erstellen Sie die Konfigurationsdatei:
++
+[source, console]
+----
+cat << EOF > /etc/netappdvp/config.json
+----
++
+[source, json]
+----
+{
+  "version": 1,
+  "storageDriverName": "ontap-nas",
+  "managementLIF": "10.0.0.1",
+  "dataLIF": "10.0.0.2",
+  "svm": "svm_nfs",
+  "username": "vsadmin",
+  "password": "password",
+  "aggregate": "aggr1"
+}
+EOF
+----
+
+
+
+
+. Starten Sie Trident über das verwaltete Plugin-System. Ersetzen Sie  `<version>` durch die von Ihnen verwendete Plugin-Version (xxx.xx.x).
++
+[source, console]
+----
+docker plugin install --grant-all-permissions --alias netapp netapp/trident-plugin:<version> config=myConfigFile.json
+----
+. Beginnen Sie mit der Nutzung von Trident, um Speicher vom konfigurierten System zu verwenden.
++
+.. Erstellen Sie ein Volume mit dem Namen "firstVolume":
++
+[source, console]
+----
+docker volume create -d netapp --name firstVolume
+----
+.. Erstellen Sie ein Standardvolume, wenn der Container startet:
++
+[source, console]
+----
+docker run --rm -it --volume-driver netapp --volume secondVolume:/my_vol alpine ash
+----
+.. Entfernen Sie das Volume "firstVolume":
++
+[source, console]
+----
+docker volume rm firstVolume
+----
+
+
+
+
+
+
+[[traditional-method-version-1-12-or-earlier]]
+== Traditionelle Methode (Version 1.12 oder früher)
+
+.Bevor Sie beginnen
+. Stellen Sie sicher, dass Sie Docker Version 1.10 oder später verwenden.
++
+[source, console]
+----
+docker --version
+----
++
+Wenn Ihre Version veraltet ist, aktualisieren Sie Ihre Installation.
+
++
+[source, console]
+----
+curl -fsSL https://get.docker.com/ | sh
+----
++
+Oder, https://docs.docker.com/engine/install/["Befolgen Sie die Anweisungen für Ihre Distribution"^].
+
+. Stellen Sie sicher, dass NFS und/oder iSCSI für Ihr System konfiguriert ist.
+
+
+.Schritte
+. Installieren und konfigurieren Sie das NetApp Docker Volume Plugin:
++
+.. Laden Sie die Anwendung herunter und entpacken Sie sie:
++
+[source, console]
+----
+wget https://github.com/NetApp/trident/releases/download/10.0/trident-installer-26.06.0.tar.gz
+tar zxf trident-installer-26.06.0.tar.gz
+----
+.. Wechseln Sie zu einem Ort im Binärpfad:
++
+[source, console]
+----
+sudo mv trident-installer/extras/bin/trident /usr/local/bin/
+sudo chown root:root /usr/local/bin/trident
+sudo chmod 755 /usr/local/bin/trident
+----
+.. Erstellen Sie einen Speicherort für die Konfigurationsdatei:
++
+[source, console]
+----
+sudo mkdir -p /etc/netappdvp
+----
+.. Erstellen Sie die Konfigurationsdatei:
++
+[source, console]
+----
+cat << EOF > /etc/netappdvp/ontap-nas.json
+----
++
+[source, json]
+----
+{
+  "version": 1,
+  "storageDriverName": "ontap-nas",
+  "managementLIF": "10.0.0.1",
+  "dataLIF": "10.0.0.2",
+  "svm": "svm_nfs",
+  "username": "vsadmin",
+  "password": "password",
+  "aggregate": "aggr1"
+}
+EOF
+----
+
+
+. Nachdem Sie die Binärdatei platziert und die Konfigurationsdatei erstellt haben, starten Sie den Trident Daemon mit der gewünschten Konfigurationsdatei.
++
+[source, console]
+----
+sudo trident --config=/etc/netappdvp/ontap-nas.json
+----
++
+
+NOTE: Sofern nicht anders angegeben, lautet der Standardname für den Volume-Treiber "netapp".
+
++
+Nach dem Start des Daemons können Sie Volumes mit der Docker CLI Schnittstelle erstellen und verwalten.
+
+. Erstellen Sie ein Volume:
++
+[source, console]
+----
+docker volume create -d netapp --name trident_1
+----
+. Stellen Sie ein Docker-Volume beim Starten eines Containers bereit:
++
+[source, console]
+----
+docker run --rm -it --volume-driver netapp --volume trident_2:/my_vol alpine ash
+----
+. Entfernen Sie ein Docker-Volume:
++
+[source, console]
+----
+docker volume rm trident_1
+----
++
+[source, console]
+----
+docker volume rm trident_2
+----
+
+
+
+
+[[start-trident-at-system-startup]]
+== Trident beim Systemstart starten
+
+Eine Beispiel-Unit-Datei für systemd-basierte Systeme finden Sie  `contrib/trident.service.example` im Git-Repository. Um die Datei unter RHEL zu verwenden, gehen Sie wie folgt vor:
+
+. Kopieren Sie die Datei an den richtigen Speicherort.
++
+Sie sollten eindeutige Namen für die Unit-Dateien verwenden, wenn Sie mehr als eine Instanz ausführen.
+
++
+[source, console]
+----
+cp contrib/trident.service.example /usr/lib/systemd/system/trident.service
+----
+. Bearbeiten Sie die Datei, ändern Sie die Beschreibung (Zeile 2) so, dass sie dem Treibernamen entspricht, und den Pfad der Konfigurationsdatei (Zeile 9) so, dass er Ihre Umgebung widerspiegelt.
+. Laden Sie systemd neu, damit die Änderungen übernommen werden:
++
+[source, console]
+----
+systemctl daemon-reload
+----
+. Aktivieren Sie den Dienst.
++
+Dieser Name variiert je nachdem, wie Sie die Datei im  `/usr/lib/systemd/system` Verzeichnis benannt haben.
+
++
+[source, console]
+----
+systemctl enable trident
+----
+. Starten Sie den Dienst.
++
+[source, console]
+----
+systemctl start trident
+----
+. Status anzeigen.
++
+[source, console]
+----
+systemctl status trident
+----
+
+
+
+NOTE: Jedes Mal, wenn Sie die Unit-Datei ändern, führen Sie den  `systemctl daemon-reload` Befehl aus, damit die Änderungen wirksam werden.

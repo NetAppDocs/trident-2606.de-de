@@ -1,0 +1,105 @@
+---
+sidebar: sidebar 
+permalink: trident-managing-k8s/uninstall-trident.html 
+keywords: uninstall, Trident, methods, operator, tridentctl, helm, downgrade, obliviate, crds, wipeout, downgrade 
+summary: Sie sollten die gleiche Methode zum Deinstallieren von Trident verwenden, die Sie auch zum Installieren von Trident verwendet haben. Wenn Sie eine Behebung für nach einem Upgrade aufgetretene Fehler, Abhängigkeitsprobleme oder ein fehlgeschlagenes oder unvollständiges Upgrade benötigen, sollten Sie Trident deinstallieren und die frühere Version mithilfe der spezifischen Anweisungen für diese Version erneut installieren. 
+---
+= Trident deinstallieren
+:hardbreaks:
+:allow-uri-read: 
+:icons: font
+:imagesdir: ../media/
+
+
+[role="lead"]
+Sie sollten die gleiche Methode zum Deinstallieren von Trident verwenden, die Sie auch zum Installieren von Trident verwendet haben.
+
+.Über diese Aufgabe
+* Falls nach einem Upgrade Fehler, Abhängigkeitsprobleme oder ein fehlgeschlagenes bzw. unvollständiges Upgrade auftreten, sollten Sie Trident deinstallieren und die vorherige Version gemäß der entsprechenden Anleitung neu installieren link:../earlier-versions.html["Version"]. Dies ist die einzige empfohlene Methode, um auf eine frühere Version _downzugraden_.
+* Für ein einfaches Upgrade und eine Neuinstallation entfernt das Deinstallieren von Trident weder die CRDs noch die von Trident erstellten zugehörigen Objekte. Wenn Sie Trident und alle seine Daten vollständig entfernen müssen, lesen Sie link:../troubleshooting.html#completely-remove-trident-and-crds["Trident und CRDs vollständig entfernen"].
+
+
+.Bevor Sie beginnen
+Wenn Sie Kubernetes-Cluster außer Betrieb nehmen, müssen Sie alle Anwendungen löschen, die von Trident erstellte Volumes verwenden, bevor Sie Trident deinstallieren. Dadurch wird sichergestellt, dass PVCs auf den Kubernetes-Knoten entfernt werden, bevor sie gelöscht werden.
+
+
+
+[[determine-the-original-installation-method]]
+== Ermitteln Sie die ursprüngliche Installationsmethode
+
+Sie sollten die gleiche Methode zur Deinstallation von Trident verwenden, die Sie auch zur Installation verwendet haben. Überprüfen Sie vor der Deinstallation, welche Version Sie ursprünglich zur Installation von Trident verwendet haben.
+
+. Verwenden Sie  `kubectl get pods -n trident`, um die Pods zu untersuchen.
++
+** Wenn kein Operator-Pod vorhanden ist, wurde Trident mit  `tridentctl` installiert.
+** Falls ein Operator-Pod vorhanden ist, wurde Trident entweder manuell oder mithilfe von Helm mit dem Trident-Operator installiert.
+
+
+. Wenn ein Operator-Pod vorhanden ist, verwenden Sie  `kubectl describe tproc trident` , um festzustellen, ob Trident mit Helm installiert wurde.
++
+** Wenn ein Helm-Label vorhanden ist, wurde Trident mit Helm installiert.
+** Falls kein Helm-Label vorhanden ist, wurde Trident manuell mit dem Trident-Operator installiert.
+
+
+
+
+
+
+[[uninstall-a-trident-operator-installation]]
+== Entfernen einer Trident-Operatorinstallation
+
+Sie können eine Trident-Operator-Installation manuell oder mit Helm deinstallieren.
+
+
+
+[[uninstall-manual-installation]]
+=== Manuelle Installation deinstallieren
+
+Wenn Sie Trident mithilfe des Operators installiert haben, können Sie es auf eine der folgenden Arten deinstallieren:
+
+. **Edit `TridentOrchestrator` CR und Deinstallationsflag setzen**:
++
+[listing]
+----
+kubectl patch torc <trident-orchestrator-name> --type=merge -p '{"spec":{"uninstall":true}}'
+----
++
+Wenn das  `uninstall` Flag auf  `true` gesetzt ist, deinstalliert der Trident-Operator Trident, entfernt jedoch den TridentOrchestrator selbst nicht. Sie sollten den TridentOrchestrator bereinigen und einen neuen erstellen, wenn Sie Trident erneut installieren möchten.
+
+. **Löschen `TridentOrchestrator`**: Durch das Entfernen der `TridentOrchestrator` CR, die zur Bereitstellung von Trident verwendet wurde, weisen Sie den Operator an, Trident zu deinstallieren. Der Operator verarbeitet die Entfernung von `TridentOrchestrator` und fährt fort, die Trident-Bereitstellung und das DaemonSet zu entfernen, wobei die im Rahmen der Installation erstellten Trident-Pods gelöscht werden.
++
+[listing]
+----
+kubectl delete -f deploy/<bundle.yaml> -n <namespace>
+----
+
+
+
+
+[[uninstall-helm-installation]]
+=== Helm-Installation deinstallieren
+
+Wenn Sie Trident mit Helm installiert haben, können Sie es mit  `helm uninstall` deinstallieren.
+
+[listing]
+----
+#List the Helm release corresponding to the Trident install.
+helm ls -n trident
+NAME          NAMESPACE       REVISION        UPDATED                                 STATUS          CHART                           APP VERSION
+trident       trident         1               2021-04-20 00:26:42.417764794 +0000 UTC deployed        trident-operator-21.07.1        21.07.1
+
+#Uninstall Helm release to remove Trident
+helm uninstall trident -n trident
+release "trident" uninstalled
+----
+
+
+[[uninstall-a-tridentctl-installation]]
+== Deinstallieren einer  `tridentctl`Installation
+
+Verwenden Sie den  `uninstall`-Befehl in  `tridentctl`, um alle Ressourcen, die mit Trident verbunden sind, mit Ausnahme der CRDs und zugehörigen Objekte zu entfernen:
+
+[listing]
+----
+./tridentctl uninstall -n <namespace>
+----

@@ -1,0 +1,103 @@
+---
+sidebar: sidebar 
+permalink: trident-docker/upgrade-uninstall-docker.html 
+keywords: uninstall, Trident, trident for docker, docker, upgrade trident for docker 
+summary: 'Sie können Trident für Docker sicher aktualisieren, ohne dass die verwendeten Volumes beeinträchtigt werden. Während des Aktualisierungsvorgangs wird es eine kurze Zeit geben, in der  `docker volume` Befehle an das Plugin nicht erfolgreich sind und Anwendungen keine Volumes einbinden können, bis das Plugin wieder läuft. In den meisten Fällen dauert dies nur wenige Sekunden.' 
+---
+= Aktualisieren oder deinstallieren Sie Trident
+:hardbreaks:
+:allow-uri-read: 
+:icons: font
+:imagesdir: ../media/
+
+
+[role="lead"]
+Sie können Trident für Docker sicher aktualisieren, ohne dass die verwendeten Volumes beeinträchtigt werden. Während des Aktualisierungsvorgangs wird es eine kurze Zeit geben, in der  `docker volume` Befehle an das Plugin nicht erfolgreich sind und Anwendungen keine Volumes einbinden können, bis das Plugin wieder läuft. In den meisten Fällen dauert dies nur wenige Sekunden.
+
+
+
+[[upgrade]]
+== Upgrade
+
+Führen Sie die folgenden Schritte aus, um Trident für Docker zu aktualisieren.
+
+.Schritte
+. Liste der vorhandenen Volumes:
++
+[listing]
+----
+docker volume ls
+DRIVER              VOLUME NAME
+netapp:latest       my_volume
+----
+. Deaktivieren Sie das Plugin:
++
+[listing]
+----
+docker plugin disable -f netapp:latest
+docker plugin ls
+ID                  NAME                DESCRIPTION                          ENABLED
+7067f39a5df5        netapp:latest       nDVP - NetApp Docker Volume Plugin   false
+----
+. Aktualisieren Sie das Plugin:
++
+[listing]
+----
+docker plugin upgrade --skip-remote-check --grant-all-permissions netapp:latest netapp/trident-plugin:21.07
+----
++
+
+NOTE: Die Version 18.01 von Trident ersetzt die nDVP. Sie sollten direkt vom  `netapp/ndvp-plugin` Image auf das  `netapp/trident-plugin` Image aktualisieren.
+
+. Aktivieren Sie das Plugin:
++
+[listing]
+----
+docker plugin enable netapp:latest
+----
+. Überprüfen Sie, ob das Plugin aktiviert ist:
++
+[listing]
+----
+docker plugin ls
+ID                  NAME                DESCRIPTION                             ENABLED
+7067f39a5df5        netapp:latest       Trident - NetApp Docker Volume Plugin   true
+----
+. Überprüfen Sie, ob die Volumes sichtbar sind:
++
+[listing]
+----
+docker volume ls
+DRIVER              VOLUME NAME
+netapp:latest       my_volume
+----
+
+
+
+IMPORTANT: Wenn Sie von einer alten Version von Trident (vor 20.10) auf Trident 20.10 oder höher aktualisieren, kann ein Fehler auftreten. Weitere Informationen finden Sie unter link:known-issues-docker.html["Bekannte Probleme"^]. Wenn Sie auf den Fehler stoßen, sollten Sie zuerst das Plugin deaktivieren, dann das Plugin entfernen und anschließend die erforderliche Trident Version installieren, indem Sie einen zusätzlichen Konfigurationsparameter übergeben: `docker plugin install netapp/trident-plugin:20.10 --alias netapp --grant-all-permissions config=config.json`
+
+
+
+[[uninstall]]
+== Deinstallieren
+
+Führen Sie die folgenden Schritte aus, um Trident für Docker zu deinstallieren.
+
+.Schritte
+. Entfernen Sie alle Volumes, die vom Plugin erstellt wurden.
+. Deaktivieren Sie das Plugin:
++
+[listing]
+----
+docker plugin disable netapp:latest
+docker plugin ls
+ID                  NAME                DESCRIPTION                          ENABLED
+7067f39a5df5        netapp:latest       nDVP - NetApp Docker Volume Plugin   false
+----
+. Entfernen Sie das Plugin:
++
+[listing]
+----
+docker plugin rm netapp:latest
+----
+

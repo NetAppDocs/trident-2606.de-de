@@ -1,0 +1,76 @@
+---
+sidebar: sidebar 
+permalink: trident-get-started/k8s-netapp.html 
+keywords: kubernetes, netapp storage, ontap, cloud volumes ontap, santricity, element software, netapp hci, anf, azure netapp files, aws, amazon fsx 
+summary: Das NetApp Portfolio an Speicherprodukten integriert sich in viele verschiedene Aspekte eines Kubernetes-Clusters und bietet fortschrittliche Datenverwaltungsfunktionen, die die Funktionalität, Fähigkeit, Performance und Verfügbarkeit der Kubernetes-Bereitstellung verbessern. 
+---
+= Trident und Kubernetes Integration mit NetApp Produkten
+:hardbreaks:
+:allow-uri-read: 
+:icons: font
+:imagesdir: ../media/
+
+
+[role="lead"]
+Das NetApp Portfolio an Speicherprodukten integriert sich in viele verschiedene Aspekte eines Kubernetes-Clusters und bietet fortschrittliche Datenverwaltungsfunktionen, die die Funktionalität, Fähigkeit, Performance und Verfügbarkeit der Kubernetes-Bereitstellung verbessern.
+
+
+
+[[trident]]
+== Trident
+
+https://docs.netapp.com/us-en/trident/["Trident"^] erleichtert es Unternehmen, ihre datenreichen containerisierten Workloads, die auf Kubernetes innerhalb und zwischen Public Clouds sowie On-Premises ausgeführt werden, zu verwalten, zu schützen und zu verschieben. Trident stellt persistenten Containerspeicher mithilfe von Trident aus dem bewährten und umfangreichen NetApp Storage-Portfolio in der Public Cloud und On-Premises bereit. Es bietet außerdem eine umfangreiche Palette fortschrittlicher erkennt Applikationen Datenverwaltungsfunktionen wie Snapshot, Backup und Restore, Aktivitätsprotokolle und aktives Klonen für Datenschutz, Notfall-/Datenwiederherstellung, Datenprüfung und Migrationsanwendungsfälle für Kubernetes-Workloads.
+
+
+
+[[ontap]]
+== ONTAP
+
+ONTAP ist das NetApp Multiprotokoll-, einheitliche Speicherbetriebssystem, das fortschrittliche Datenverwaltungsfunktionen für jede Anwendung bietet. ONTAP-Systeme sind in All-Flash-, Hybrid- oder All-HDD-Konfigurationen erhältlich und bieten viele verschiedene Bereitstellungsmodelle, darunter Engineered Hardware (FAS und AFF), White-Box (ONTAP Select) und reine Cloud-Lösungen (Cloud Volumes ONTAP).
+
+
+NOTE: Trident unterstützt alle oben genannten ONTAP Deployment-Modelle.
+
+
+
+[[cloud-volumes-ontap]]
+== Cloud Volumes ONTAP
+
+Cloud Volumes ONTAP ist eine rein softwarebasierte Storage-Appliance, die die ONTAP Datenmanagement-Software in der Cloud ausführt. Cloud Volumes ONTAP kann für Produktions-Workloads, Notfallwiederherstellung, DevOps, Dateifreigaben und Datenbankverwaltung verwendet werden. Die Lösung erweitert Unternehmensspeicher in die Cloud, indem sie Speichereffizienz, Hochverfügbarkeit, Datenreplizierung, Daten-Tiering und Anwendungskonsistenz bietet.
+
+
+
+[[amazon-fsx-for-netapp-ontap]]
+== Amazon FSx for NetApp ONTAP
+
+https://docs.aws.amazon.com/fsx/latest/ONTAPGuide/what-is-fsx-ontap.html["Amazon FSx for NetApp ONTAP"^] ist ein vollständig verwalteter AWS-Service, mit dem Sie Dateisysteme starten und ausführen können, die vom NetApp ONTAP Storage-Betriebssystem betrieben werden. FSx for ONTAP ermöglicht es Ihnen, NetApp Funktionen, Performance und administrative Fähigkeiten zu nutzen, mit denen Sie vertraut sind, während Sie gleichzeitig von der Einfachheit, Agilität, Sicherheit und Skalierbarkeit der Datenspeicherung auf AWS profitieren. FSx for ONTAP unterstützt viele der ONTAP-Dateisystemfunktionen und Verwaltungs-APIs.
+
+
+
+[[element-software]]
+== Element Software
+
+https://www.netapp.com/data-management/element-software/["Element"^] ermöglicht es Speicheradministratoren, Workloads zu konsolidieren, indem Leistung garantiert und ein vereinfachter sowie optimierter Speicher-Footprint ermöglicht wird. In Kombination mit einer API zur Automatisierung aller Aspekte des Speichermanagements ermöglicht Element Speicheradministratoren, mit weniger Aufwand mehr zu erreichen.
+
+
+
+[[netapp-hci]]
+== NetApp HCI
+
+https://www.netapp.com/virtual-desktop-infrastructure/netapp-hci/["NetApp HCI"^] vereinfacht die Verwaltung und Skalierung des Rechenzentrums durch die Automatisierung von Routineaufgaben und ermöglicht Infrastrukturadministratoren, sich auf wichtigere Funktionen zu konzentrieren.
+
+NetApp HCI wird vollständig von Trident unterstützt. Trident kann Speichergeräte für containerisierte Anwendungen direkt auf der zugrunde liegenden NetApp HCI-Speicherplattform bereitstellen und verwalten.
+
+
+
+[[azure-netapp-files]]
+== Azure NetApp Files
+
+https://azure.microsoft.com/en-us/products/netapp/["Azure NetApp Files"^] ist ein Azure-Dateifreigabedienst der Enterprise-Klasse, der von NetApp betrieben wird. Sie können Ihre anspruchsvollsten dateibasierten Workloads nativ in Azure ausführen, mit der Leistung und dem umfassenden Datenmanagement, das Sie von NetApp erwarten.
+
+
+
+[[google-cloud-netapp-volumes]]
+== Google Cloud NetApp Volumes
+
+https://www.netapp.com/google-cloud/netapp-volumes/["Google Cloud NetApp Volumes"^] ist ein Cloud-nativer Dateidienst, der NAS-Volumes über NFS mit All-Flash-Performance bereitstellt. Dieser Dienst ermöglicht die Ausführung beliebiger Workloads, einschließlich älterer Anwendungen, in der GCP Cloud. Er bietet einen vollständig verwalteten Dienst mit konstant hoher Leistung, sofortigem Klonen, Datensicherung und sicherem Zugriff auf Google Compute Engine (GCE) Instanzen.

@@ -1,0 +1,225 @@
+---
+sidebar: sidebar 
+permalink: trident-protect/trident-protect-manage-applications.html 
+keywords: appvault, data protection, custom resource, namespace, application, cluster 
+summary: Sie können Trident Protect über eine Anwendung informieren, die Sie verwalten möchten, indem Sie eine Anwendungs-CR und eine zugehörige AppVault CR erstellen. 
+---
+= Definieren Sie eine Anwendung für das Management mit Trident Protect
+:hardbreaks:
+:allow-uri-read: 
+:nofooter: 
+:icons: font
+:linkattrs: 
+:imagesdir: ../media/
+
+
+[role="lead"]
+Sie können eine Anwendung, die Sie mit Trident Protect verwalten möchten, definieren, indem Sie eine Anwendungs-CR und eine zugehörige AppVault CR erstellen.
+
+
+
+[[create-an-appvault-cr]]
+== Erstellen Sie eine AppVault CR
+
+Sie müssen ein AppVault-CR erstellen, das bei der Durchführung von Datensicherungsoperationen an der Anwendung verwendet wird, und das AppVault-CR muss sich auf dem Cluster befinden, auf dem Trident Protect installiert ist. Das AppVault-CR ist spezifisch für Ihre Umgebung; Beispiele für AppVault-CRs finden Sie unter link:trident-protect-appvault-custom-resources.html["AppVault benutzerdefinierte Ressourcen."]
+
+
+
+[[define-an-application]]
+== Eine Anwendung definieren
+
+Sie müssen jede Anwendung, die Sie mit Trident Protect verwalten möchten, definieren. Sie können eine Anwendung zur Verwaltung entweder manuell durch Erstellen eines Anwendungs-CR oder mithilfe der Trident Protect CLI definieren.
+
+
+NOTE: Um eine VM-bezogene Anwendung zu definieren, die bestimmte KubeVirt virtuelle Maschinen (VMs) anhand ihres Namens anstatt ganzer Namensräume schützt, kann das  `spec.includedVirtualMachines` Feld im Application-CR oder das  `--virtual-machines` Flag in der CLI verwendet werden. Details, Feldreferenz und YAML-Beispiele sind unter link:trident-protect-kubevirt-vms.html["Schutz von KubeVirt virtuellen Maschinen mit Trident Protect"] zu finden.
+
+[role="tabbed-block"]
+====
+.Fügen Sie eine Anwendung mithilfe eines CR hinzu
+--
+.Schritte
+. Erstellen Sie die CR-Datei der Zielanwendung:
++
+.. Erstellen Sie die benutzerdefinierte Ressourcendatei (CR) und benennen Sie sie (zum Beispiel  `maria-app.yaml`).
+.. Konfigurieren Sie die folgenden Attribute:
++
+*** *metadata.name*: (_Erforderlich_) Der Name der benutzerdefinierten Anwendungsressource. Merken Sie sich den Namen, den Sie wählen, da andere für Schutzvorgänge benötigte CR-Dateien auf diesen Wert verweisen.
+*** *spec.includedNamespaces*: (_Erforderlich_) Verwenden Sie Namespace und Label-Selektor, um die Namespaces und Ressourcen anzugeben, die die Anwendung verwendet. Der Anwendungsnamespace muss Teil dieser Liste sein. Der Label-Selektor ist optional und kann verwendet werden, um Ressourcen innerhalb jedes angegebenen Namespace zu filtern.
+*** *spec.includedClusterScopedResources*: (_Optional_) Verwenden Sie dieses Attribut, um Cluster-Scoped-Ressourcen anzugeben, die in die Anwendungsdefinition aufgenommen werden sollen. Mit diesem Attribut können Sie diese Ressourcen anhand ihrer Gruppe, Version, Art und Bezeichnungen auswählen.
++
+**** *groupVersionKind*: (_Erforderlich_) Gibt die API-Gruppe, die Version und die Art der clusterweiten Ressource an.
+**** *labelSelector*: (_Optional_) Filtert die clusterweiten Ressourcen anhand ihrer Labels.
+
+
+*** *metadata.annotations.protect.trident.netapp.io/skip-vm-freeze*: (_Optional_) Diese Annotation ist nur für Anwendungen relevant, die von virtuellen Maschinen aus definiert werden, z. B. in KubeVirt-Umgebungen, in denen das Dateisystem vor Snapshots eingefroren wird. Legen Sie fest, ob diese Anwendung während eines Snapshots auf das Dateisystem schreiben darf. Ist die Option auf true gesetzt, ignoriert die Anwendung die globale Einstellung und kann während eines Snapshots auf das Dateisystem schreiben. Ist die Option auf false gesetzt, ignoriert die Anwendung die globale Einstellung und das Dateisystem wird während eines Snapshots eingefroren. Wird die Option angegeben, die Anwendung aber keine virtuellen Maschinen in der Anwendungsdefinition hat, wird die Annotation ignoriert. Wird sie nicht angegeben, folgt die Anwendung der link:trident-protect-requirements.html#protecting-data-with-kubevirt-vms["globale Trident Protect freeze-Einstellung"].
++
+[NOTE]
+====
+Falls Sie diese Annotation nachträglich anwenden müssen, nachdem eine Anwendung bereits erstellt wurde, können Sie den folgenden Befehl verwenden:
+
+[source, console]
+----
+kubectl annotate application -n <application CR namespace> <application CR name> protect.trident.netapp.io/skip-vm-freeze="true"
+----
+====
++
+Beispiel YAML:
+
++
+[source, yaml]
+----
+apiVersion: protect.trident.netapp.io/v1
+kind: Application
+metadata:
+  annotations:
+    protect.trident.netapp.io/skip-vm-freeze: "false"
+  name: my-app-name
+  namespace: my-app-namespace
+spec:
+  includedNamespaces:
+    - namespace: namespace-1
+      labelSelector:
+        matchLabels:
+          app: example-app
+    - namespace: namespace-2
+      labelSelector:
+        matchLabels:
+          app: another-example-app
+  includedClusterScopedResources:
+    - groupVersionKind:
+        group: rbac.authorization.k8s.io
+        kind: ClusterRole
+        version: v1
+      labelSelector:
+        matchLabels:
+          mylabel: test
+
+----
+
+
+
+
+. (_Optional_) Falls erforderlich, können Sie der gleichen CR eine Ressourcenfilterung hinzufügen, um bestimmte Ressourcen einzuschließen oder auszuschließen:
++
+** *Beispiel für einen generischen Filter:*
++
+*** *resourceFilter.resourceSelectionCriteria*: (Für die Filterung erforderlich) Verwenden Sie  `Include` oder  `Exclude`, um eine in resourceMatchers definierte Ressource ein- oder auszuschließen. Fügen Sie die folgenden resourceMatchers-Parameter hinzu, um die Ressourcen zu definieren, die ein- oder auszuschließen sind:
++
+**** *resourceFilter.resourceMatchers*: Ein Array von resourceMatcher-Objekten. Wenn mehrere Elemente in diesem Array definiert werden, erfolgt die Übereinstimmung als ODER-Verknüpfung, und die Felder innerhalb jedes Elements (group, kind, version) werden als UND-Verknüpfung betrachtet.
+**** *resourceMatchers[].group*: (_Optional_) Gruppe der zu filternden Ressource.
+**** *resourceMatchers[].kind*: (_Optional_) Art der zu filternden Ressource.
+**** *resourceMatchers[].version*: (_Optional_) Version der zu filternden Ressource.
+**** *resourceMatchers[].names*: (_Optional_) Namen im Kubernetes metadata.name-Feld der Ressource, die gefiltert werden soll.
+**** *resourceMatchers[].namespaces*: (_Optional_) Namespaces im Kubernetes metadata.name-Feld der Ressource, die gefiltert werden soll.
+**** *resourceMatchers[].labelSelectors*: (_Optional_) Label-Selektorzeichenfolge im Kubernetes-Metadatenfeld name der Ressource, wie definiert in der https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors["Kubernetes-Dokumentation"^]. Beispiel:  `"trident.netapp.io/os=linux"`.
++
+
+NOTE: Wenn sowohl  `resourceFilter` als auch  `labelSelector` verwendet werden, wird  `resourceFilter` zuerst ausgeführt und anschließend  `labelSelector` auf die resultierenden Ressourcen angewendet.
+
++
+Beispiel:
+
++
+[source, yaml]
+----
+spec:
+  resourceFilter:
+    resourceSelectionCriteria: "Include"
+    resourceMatchers:
+      - group: my-resource-group-1
+        kind: my-resource-kind-1
+        version: my-resource-version-1
+        names: ["my-resource-names"]
+        namespaces: ["my-resource-namespaces"]
+        labelSelectors: ["trident.netapp.io/os=linux"]
+      - group: my-resource-group-2
+        kind: my-resource-kind-2
+        version: my-resource-version-2
+        names: ["my-resource-names"]
+        namespaces: ["my-resource-namespaces"]
+        labelSelectors: ["trident.netapp.io/os=linux"]
+----
+
+
+
+
+** *Beispiel für einen reinen PVC-Filter:*
++
+Um eine reine PVC-Anwendung zu definieren, müssen Sie auch  `PersistentVolume` und  `VolumeSnapshotClass` im Ressourcenfilter angeben. Snapshot- und Backup-Vorgänge hängen von  `PersistentVolume` (dem clusterweiten Volume, das an jedes PVC gebunden ist) und  `VolumeSnapshotClass` (dem Snapshot-Treiber) ab und schlagen ohne diese fehl. Beispiel:
+
++
+[source, yaml]
+----
+apiVersion: protect.trident.netapp.io/v1
+kind: Application
+metadata:
+  name: my-pvc-app
+  namespace: my-app-namespace
+spec:
+  includedNamespaces:
+  - namespace: my-app-namespace
+  resourceFilter:
+    resourceMatchers:
+    - kind: PersistentVolumeClaim
+      version: v1
+    - kind: PersistentVolume
+      version: v1
+    - kind: VolumeSnapshotClass
+      version: v1
+    resourceSelectionCriteria: Include
+----
+
+
+. Nachdem Sie die Anwendungs-CR erstellt haben, die zu Ihrer Umgebung passt, wenden Sie die CR an. Beispiel:
++
+[source, console]
+----
+kubectl apply -f maria-app.yaml
+----
+
+
+--
+.Fügen Sie eine Anwendung mit der CLI hinzu
+--
+.Schritte
+. Erstellen und wenden Sie die Anwendungsdefinition anhand eines der folgenden Beispiele an, wobei Sie die Werte in Klammern durch Informationen aus Ihrer Umgebung ersetzen. Sie können Namensräume und Ressourcen in die Anwendungsdefinition einbinden, indem Sie durch Kommas getrennte Listen mit den in den Beispielen gezeigten Argumenten verwenden.
+
+
+Beim Erstellen einer App können Sie optional eine Annotation verwenden, um festzulegen, ob die Anwendung während eines Snapshots auf das Dateisystem schreiben darf. Dies gilt nur für Anwendungen, die von virtuellen Maschinen definiert werden, beispielsweise in KubeVirt-Umgebungen, in denen das Dateisystem vor Snapshots eingefroren wird. Wenn Sie die Annotation auf  `true` setzen, ignoriert die Anwendung die globale Einstellung und kann während eines Snapshots auf das Dateisystem schreiben. Wenn Sie sie auf  `false` setzen, ignoriert die Anwendung die globale Einstellung und das Dateisystem wird während eines Snapshots eingefroren. Wenn Sie die Annotation verwenden, die Anwendung aber keine virtuellen Maschinen in der Anwendungsdefinition hat, wird die Annotation ignoriert. Wenn Sie die Annotation nicht verwenden, folgt die Anwendung der link:trident-protect-requirements.html#protecting-data-with-kubevirt-vms["globale Trident Protect freeze-Einstellung"].
+
++ Um die Annotation bei der Erstellung einer Anwendung über die CLI anzugeben, können Sie das  `--annotation` Flag verwenden.
+
++ * Die Anwendung wird erstellt und die globale Einstellung für das Einfrieren des Dateisystems verwendet:
+
++
+
+[source, console]
+----
+tridentctl-protect create application <my_new_app_cr_name> --namespaces <namespaces_to_include> --csr <cluster_scoped_resources_to_include> --namespace <my-app-namespace>
+----
++ * Die Anwendung wird erstellt und die lokale Anwendungseinstellung für das Verhalten beim Einfrieren des Dateisystems wird konfiguriert:
+
++
+
+[source, console]
+----
+tridentctl-protect create application <my_new_app_cr_name> --namespaces <namespaces_to_include> --csr <cluster_scoped_resources_to_include> --namespace <my-app-namespace> --annotation protect.trident.netapp.io/skip-vm-freeze=<"true"|"false">
+----
++ * Sie können  `--resource-filter-include` und  `--resource-filter-exclude` Flags verwenden, um Ressourcen basierend auf  `resourceSelectionCriteria` wie Gruppe, Art, Version, Bezeichnungen, Namen und Namensräumen einzuschließen oder auszuschließen, wie im folgenden Beispiel gezeigt:
+
++
+
+[source, console]
+----
+tridentctl-protect create application <my_new_app_cr_name> --namespaces <namespaces_to_include> --csr <cluster_scoped_resources_to_include> --namespace <my-app-namespace> --resource-filter-include '[{"Group":"apps","Kind":"Deployment","Version":"v1","Names":["my-deployment"],"Namespaces":["my-namespace"],"LabelSelectors":["app=my-app"]}]'
+----
+Um eine reine PVC-Anwendung zu definieren, müssen auch  `PersistentVolume` und  `VolumeSnapshotClass`` im Ressourcenfilter enthalten sein. Snapshot- und Backup-Vorgänge hängen von  `PersistentVolume` (dem clusterweiten Volume, das an jedes PVC gebunden ist) und  `VolumeSnapshotClass` (dem Snapshot-Treiber) ab und schlagen ohne diese fehl. Beispiel:
+
++
+
+[source, console]
+----
+tridentctl-protect create app my-pvc-app --namespaces <my-app-namespace> --resource-filter-include '[{"Kind":"PersistentVolumeClaim","Version":"v1"},{"Kind":"PersistentVolume","Version":"v1"},{"Kind":"VolumeSnapshotClass","Version":"v1"}]' -n <my-app-namespace>
+----
+--
+====

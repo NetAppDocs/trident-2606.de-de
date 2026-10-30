@@ -1,0 +1,602 @@
+---
+sidebar: sidebar 
+permalink: trident-docker/stor-config.html 
+keywords: deploy, trident, docker, trident for docker, nfs, iscsi, protocol, nfs protocol, iscsi protocol, configure host, host config, storage config, options, variables, ontap, element, storage pool, service type, service level, cloud volumes 
+summary: Sehen Sie sich die für Ihre Trident Konfigurationen verfügbaren Konfigurationsoptionen an. 
+---
+= Speicherkonfigurationsoptionen
+:hardbreaks:
+:allow-uri-read: 
+:icons: font
+:imagesdir: ../media/
+
+
+[role="lead"]
+Sehen Sie sich die für Ihre Trident Konfigurationen verfügbaren Konfigurationsoptionen an.
+
+
+
+[[global-configuration-options]]
+== Globale Konfigurationsoptionen
+
+Diese Konfigurationsoptionen gelten für alle Trident-Konfigurationen, unabhängig von der verwendeten Storage-Plattform.
+
+[cols="3*"]
+|===
+| Option | Beschreibung | Beispiel 
+
+
+| `version`  a| 
+Versionsnummer der Konfigurationsdatei
+ a| 
+`1`
+
+
+
+| `storageDriverName`  a| 
+Name des Speichertreibers
+ a| 
+`ontap-nas`, `ontap-san`, `ontap-nas-economy`,
+`ontap-nas-flexgroup`, `solidfire-san`
+
+
+
+| `storagePrefix`  a| 
+Optionales Präfix für Datenträgernamen. Standard:  `netappdvp_`.
+ a| 
+`staging_`
+
+
+
+| `limitVolumeSize`  a| 
+Optionale Beschränkung der Volumengrößen. Standard: "" (nicht erzwungen)
+ a| 
+`10g`
+
+|===
+
+TIP: Verwenden Sie  `storagePrefix` (einschließlich der Standardeinstellung) nicht für Element-Backends. Standardmäßig ignoriert der  `solidfire-san` Treiber diese Einstellung und verwendet kein Präfix. NetApp empfiehlt, entweder eine spezifische tenantID für das Docker-Volume-Mapping zu verwenden oder die Attributdaten zu nutzen, die mit der Docker-Version, Treiberinformationen und dem Rohnamen von Docker gefüllt sind, falls eine Namensmanipulation vorgenommen wurde.
+
+Standardoptionen sind verfügbar, sodass Sie diese nicht für jedes erstellte Volume angeben müssen. Die `size` Option steht für alle Controller-Typen zur Verfügung. Siehe den Abschnitt zur ONTAP-Konfiguration für ein Beispiel, wie die Standard-Volume-Größe festgelegt wird.
+
+[cols="3*"]
+|===
+| Option | Beschreibung | Beispiel 
+
+
+| `size`  a| 
+Optionale Standardgröße für neue Volumes. Standard: `1G`
+ a| 
+`10G`
+
+|===
+
+
+[[ontap-configuration]]
+== ONTAP-Konfiguration
+
+Zusätzlich zu den oben genannten globalen Konfigurationswerten stehen bei Verwendung von ONTAP die folgenden Optionen auf oberster Ebene zur Verfügung.
+
+[cols="3*"]
+|===
+| Option | Beschreibung | Beispiel 
+
+
+| `managementLIF`  a| 
+IP-Adresse des ONTAP-Management-LIF. Sie können einen vollqualifizierten Domänennamen (FQDN) angeben.
+ a| 
+`10.0.0.1`
+
+
+
+| `dataLIF`  a| 
+IP-Adresse des Protokoll-LIF.
+
+*ONTAP NAS-Treiber*: NetApp empfiehlt,  `dataLIF` anzugeben. Falls nicht angegeben, ruft Trident dataLIFs vom SVM ab. Ein vollqualifizierter Domainname (FQDN) kann für die NFS-Mount-Operationen angegeben werden, wodurch die Erstellung eines Round-Robin-DNS zur Lastverteilung über mehrere dataLIFs ermöglicht wird.
+
+*ONTAP SAN drivers*: Nicht für iSCSI oder FC angeben. Trident verwendet link:https://docs.netapp.com/us-en/ontap/san-admin/selective-lun-map-concept.html["ONTAP Selective LUN Map"^] zur Erkennung der iSCSI- oder FC-LIFs, die für die Einrichtung einer Multipath-Sitzung benötigt werden. Eine Warnung wird generiert, wenn  `dataLIF` explizit definiert ist.
+ a| 
+`10.0.0.2`
+
+
+
+| `svm`  a| 
+Zu verwendende Storage Virtual Machine (erforderlich, wenn die Management-LIF eine Cluster-LIF ist)
+ a| 
+`svm_nfs`
+
+
+
+| `username`  a| 
+Benutzername für die Verbindung zum Speichergerät
+ a| 
+`vsadmin`
+
+
+
+| `password`  a| 
+Passwort zum Verbinden mit dem Speichergerät
+ a| 
+`secret`
+
+
+
+| `aggregate`  a| 
+Aggregat für die Bereitstellung (optional; falls festgelegt, muss es der SVM zugewiesen werden). Für den  `ontap-nas-flexgroup` Treiber wird diese Option ignoriert. Alle Aggregate, die der SVM zugewiesen sind, werden zur Bereitstellung eines FlexGroup-Volumes verwendet.
+ a| 
+`aggr1`
+
+
+
+| `limitAggregateUsage`  a| 
+Optional, die Bereitstellung schlägt fehl, wenn die Nutzung über diesem Prozentsatz liegt
+ a| 
+`75%`
+
+
+
+| `nfsMountOptions`  a| 
+Feingranulare Steuerung der NFS-Mount-Optionen; Standardwert ist "-o nfsvers=3". *Nur für die  `ontap-nas` und  `ontap-nas-economy` Treiber verfügbar*. https://www.netapp.com/pdf.html?item=/media/10720-tr-4067.pdf["Informationen zur NFS-Hostkonfiguration finden Sie hier"^].
+ a| 
+`-o nfsvers=4`
+
+
+
+| `igroupName`  a| 
+Trident erstellt und verwaltet pro Node `igroups` als `netappdvp`.
+
+Dieser Wert darf weder geändert noch weggelassen werden.
+
+*Nur für den  `ontap-san` Treiber verfügbar*.
+ a| 
+`netappdvp`
+
+
+
+| `limitVolumeSize`  a| 
+Maximal anforderbare Volume-Größe.
+ a| 
+`300g`
+
+
+
+| `qtreesPerFlexvol`  a| 
+Maximale Qtrees pro FlexVol, muss im Bereich [50, 300] liegen, Standard ist 200.
+
+*Für den  `ontap-nas-economy` driver ermöglicht diese Option die Anpassung der maximalen Anzahl von qtrees pro FlexVol*.
+ a| 
+`300`
+
+
+
+ a| 
+`sanType`
+| *Unterstützt nur für `ontap-san`-Treiber.* Verwenden Sie zum Auswählen  `iscsi` für iSCSI,  `nvme` für NVMe/TCP oder  `fcp` für SCSI über Fibre Channel (FC). | `iscsi` falls leer 
+
+
+| `limitVolumePoolSize` | *Unterstützt nur für  `ontap-san-economy` und  `ontap-san-economy` Treiber.* Begrenzt FlexVol-Größen in ONTAP ontap-nas-economy und ontap-SAN-economy Treibern.  a| 
+`300g`
+
+|===
+Standardoptionen sind verfügbar, damit Sie diese nicht bei jedem erstellten Volume angeben müssen:
+
+[cols="1,3,2"]
+|===
+| Option | Beschreibung | Beispiel 
+
+
+| `spaceReserve`  a| 
+Speicherplatzreservierungsmodus; `none` (dünn bereitgestellt) oder `volume` (dick)
+ a| 
+`none`
+
+
+
+| `snapshotPolicy`  a| 
+Zu verwendende Snapshot-Richtlinie, Standard ist `none`
+ a| 
+`none`
+
+
+
+| `snapshotReserve`  a| 
+Snapshot-Reserveprozentsatz, Standardwert ist "", um den ONTAP-Standardwert zu akzeptieren
+ a| 
+`10`
+
+
+
+| `splitOnClone`  a| 
+Einen Klon beim Erstellen von seinem übergeordneten Objekt trennen, Standard ist `false`
+ a| 
+`false`
+
+
+
+| `encryption`  a| 
+Aktiviert NetApp Volume Encryption (NVE) auf dem neuen Volume; standardmäßig  `false`. NVE muss auf dem Cluster lizenziert und aktiviert sein, damit diese Option verwendet werden kann.
+
+Wenn NAE im Backend aktiviert ist, wird jedes in Trident bereitgestellte Volume NAE-aktiviert.
+
+Weitere Informationen unter: link:../trident-reco/security-reco.html["Wie Trident mit NVE und NAE zusammenarbeitet"].
+ a| 
+true
+
+
+
+| `unixPermissions`  a| 
+NAS-Option für bereitgestellte NFS-Volumes, Standardwert ist  `777`
+ a| 
+`777`
+
+
+
+| `snapshotDir`  a| 
+NAS-Option für den Zugriff auf das  `.snapshot` Verzeichnis.
+ a| 
+Aktiviert oder deaktiviert den Zugriff auf das `.snapshot` Verzeichnis.
+
+Gültige Werte: `true`, `false`. Das Standardverhalten kann je nach ONTAP und Trident Version variieren. Explizit festlegen, um ein konsistentes Verhalten sicherzustellen.
+
+
+
+| `exportPolicy`  a| 
+NAS-Option für die zu verwendende NFS-Exportrichtlinie, Standardwert ist `default`
+ a| 
+`default`
+
+
+
+| `securityStyle`  a| 
+NAS option für den Zugriff auf das bereitgestellte NFS-Volume.
+
+NFS unterstützt `mixed` und `unix` Sicherheitsstile. Der Standardwert ist `unix`.
+ a| 
+`unix`
+
+
+
+| `fileSystemType`  a| 
+SAN-Option zur Auswahl des Dateisystemtyps, Standardwert ist `ext4`
+ a| 
+`xfs`
+
+
+
+| `tieringPolicy`  a| 
+Zu verwendende Tiering-Richtlinie, Standard ist  `none`.
+ a| 
+`none`
+
+
+
+| `skipRecoveryQueue`  a| 
+Während des Löschens eines Volumes wird die Wiederherstellungswarteschlange im Speicher umgangen und das Volume sofort gelöscht.
+ a| 
+``
+
+|===
+
+
+[[scaling-options]]
+=== Skalierungsoptionen
+
+Die  `ontap-nas` und  `ontap-san` Treiber erstellen für jedes Docker-Volume ein ONTAP FlexVol. ONTAP unterstützt bis zu 1000 FlexVols pro Clusterknoten mit einem Cluster-Maximum von 12.000 FlexVol Volumes. Wenn Ihre Docker-Volume-Anforderungen innerhalb dieser Beschränkung liegen, ist der  `ontap-nas` Treiber die bevorzugte NAS-Lösung aufgrund der zusätzlichen Funktionen, die FlexVols bieten, wie Docker-Volume-genaue Snapshots und Klonen.
+
+Falls Sie mehr Docker-Volumes benötigen, als die FlexVol-Beschränkungen zulassen, wählen Sie den  `ontap-nas-economy` oder den  `ontap-san-economy` Treiber.
+
+Der `ontap-nas-economy` Treiber erstellt Docker-Volumes als ONTAP Qtrees innerhalb eines Pools von automatisch verwalteten FlexVol Volumes. Qtrees bieten eine deutlich höhere Skalierbarkeit, bis zu 100.000 pro Clusterknoten und 2.400.000 pro Cluster, allerdings auf Kosten einiger Funktionen. Der `ontap-nas-economy` Treiber unterstützt keine Docker-Volume-granularen Snapshots oder das Klonen.
+
+
+NOTE: Der  `ontap-nas-economy` Treiber wird derzeit in Docker Swarm nicht unterstützt, da Docker Swarm die Erstellung von Volumes nicht über mehrere Knoten hinweg orchestriert.
+
+Der  `ontap-san-economy` Treiber erstellt Docker-Volumes als ONTAP-LUNs innerhalb eines gemeinsam genutzten Pools von automatisch verwalteten FlexVol Volumes. Auf diese Weise ist jedes FlexVol nicht auf nur eine LUN beschränkt und bietet eine bessere Skalierbarkeit für SAN-Workloads. Abhängig vom Storage-Array unterstützt ONTAP bis zu 16384 LUNs pro Cluster. Da die Volumes LUNs zugrunde liegen, unterstützt dieser Treiber Docker-Volume-genaue Snapshots und das Klonen.
+
+Wählen Sie den  `ontap-nas-flexgroup` Treiber, um die Parallelität auf ein einzelnes Volume zu erhöhen, das in den Petabyte-Bereich mit Milliarden von Dateien wachsen kann. Einige ideale Anwendungsfälle für FlexGroups sind KI/ML/DL, Big Data und Analysen, Software-Builds, Streaming, Datei-Repositorien und so weiter. Trident verwendet alle Aggregate, die einer SVM zugewiesen sind, wenn ein FlexGroup Volume bereitgestellt wird. FlexGroup Unterstützung in Trident hat außerdem folgende Überlegungen:
+
+* Erfordert ONTAP Version 9.2 oder höher.
+* Zum jetzigen Zeitpunkt unterstützen FlexGroups nur NFS v3.
+* Es wird empfohlen, die 64-Bit-NFSv3-Kennungen für die SVM zu aktivieren.
+* Die empfohlene Mindestgröße eines FlexGroup-Mitglieds/Volumes beträgt 100 GiB.
+* Das Klonen von FlexGroup-Volumes wird nicht unterstützt.
+
+
+Weitere Informationen zu FlexGroups und Arbeitslasten, die für FlexGroups geeignet sind, finden Sie im  https://www.netapp.com/pdf.html?item=/media/12385-tr4571.pdf["NetApp FlexGroup Volume Best Practices und Implementierungsleitfaden"^].
+
+Um erweiterte Funktionen und große Skalierbarkeit in derselben Umgebung zu erreichen, können Sie mehrere Instanzen des Docker Volume Plugins ausführen, wobei eine  `ontap-nas` und eine andere  `ontap-nas-economy` verwendet.
+
+
+
+[[custom-ontap-role-for-trident]]
+=== Benutzerdefinierte ONTAP-Rolle für Trident
+
+Sie können eine ONTAP-Clusterrolle mit minimalen Berechtigungen erstellen, sodass Sie nicht die ONTAP-Admin-Rolle verwenden müssen, um Vorgänge in Trident durchzuführen. Wenn Sie den Benutzernamen in einer Trident-Backend-Konfiguration angeben, verwendet Trident die von Ihnen erstellte ONTAP-Clusterrolle, um die Vorgänge auszuführen.
+
+Weitere Informationen zum Erstellen benutzerdefinierter Trident-Rollen finden Sie unter link:https://github.com/NetApp/trident/tree/master/contrib/ontap/trident_role["Trident Custom-Role-Generator"].
+
+[role="tabbed-block"]
+====
+.Verwendung der ONTAP-Befehlszeile
+--
+. Erstellen Sie eine neue Rolle mit folgendem Befehl:
++
+`security login role create <role_name\> -cmddirname "command" -access all -vserver <svm_name\>`
+
+. Erstellen Sie einen Benutzernamen für den Trident Benutzer:
++
+`security login create -username <user_name\> -application ontapi -authmethod password -role <name_of_role_in_step_1\> -vserver <svm_name\> -comment "user_description"`
+`security login create -username <user_name\> -application http -authmethod password -role <name_of_role_in_step_1\> -vserver <svm_name\> -comment "user_description"`
+
+. Ordnen Sie die Rolle dem Benutzer zu:
++
+`security login modify username <user_name\> -vserver <svm_name\> -role <role_name\> -application ontapi -application console -authmethod <password\>`
+
+
+
+--
+.Verwenden von System Manager
+--
+Führen Sie die folgenden Schritte im ONTAP System Manager aus:
+
+. *Erstellen Sie eine benutzerdefinierte Rolle*:
++
+.. Um eine benutzerdefinierte Rolle auf Clusterebene zu erstellen, wählen Sie *Cluster > Settings*.
++
+(Oder) Um eine benutzerdefinierte Rolle auf SVM-Ebene zu erstellen, wählen Sie *Storage > Storage VMs > `required SVM`> Settings > Users and Roles*.
+
+.. Wählen Sie das Pfeilsymbol (*->*) neben *Users and Roles* aus.
+.. Wählen Sie unter *Rollen* *+Add* aus.
+.. Definieren Sie die Regeln für die Rolle und klicken Sie auf *Save*.
+
+
+. *Rolle dem Trident-Benutzer zuordnen*: + Führen Sie die folgenden Schritte auf der Seite *Benutzer und Rollen* aus:
++
+.. Wählen Sie das Symbol *+* unter *Benutzer* aus.
+.. Wählen Sie den gewünschten Benutzernamen aus und wählen Sie eine Rolle im Dropdown-Menü für *Rolle*.
+.. Auf *Speichern* klicken.
+
+
+
+
+--
+====
+Weitere Informationen finden Sie auf den folgenden Seiten:
+
+* link:https://kb.netapp.com/on-prem/ontap/Ontap_OS/OS-KBs/FAQ__Custom_roles_for_administration_of_ONTAP["Benutzerdefinierte Rollen für die Administration von ONTAP"^] oder link:https://docs.netapp.com/us-en/ontap/authentication/define-custom-roles-task.html["Benutzerdefinierte Rollen definieren"^]
+* link:https://docs.netapp.com/us-en/ontap-automation/rest/rbac_roles_users.html#rest-api["Mit Rollen und Benutzern arbeiten"^]
+
+
+
+
+[[example-ontap-configuration-files]]
+=== Beispiel ONTAP-Konfigurationsdateien
+
+.NFS-Beispiel für <code>ontap-nas</code> Treiber
+[%collapsible]
+====
+[source, json]
+----
+{
+  "version": 1,
+  "storageDriverName": "ontap-nas",
+  "managementLIF": "10.0.0.1",
+  "dataLIF": "10.0.0.2",
+  "svm": "svm_nfs",
+  "username": "vsadmin",
+  "password": "password",
+  "aggregate": "aggr1",
+  "defaults": {
+    "size": "10G",
+    "spaceReserve": "none",
+    "exportPolicy": "default"
+  }
+}
+----
+====
+.NFS-Beispiel für <code>ontap-nas-flexgroup</code>-Treiber
+[%collapsible]
+====
+[source, json]
+----
+{
+  "version": 1,
+  "storageDriverName": "ontap-nas-flexgroup",
+  "managementLIF": "10.0.0.1",
+  "dataLIF": "10.0.0.2",
+  "svm": "svm_nfs",
+  "username": "vsadmin",
+  "password": "password",
+  "defaults": {
+    "size": "100G",
+    "spaceReserve": "none",
+    "exportPolicy": "default"
+  }
+}
+----
+====
+.NFS-Beispiel für <code>ontap-nas-economy</code>-Treiber
+[%collapsible]
+====
+[source, json]
+----
+{
+  "version": 1,
+  "storageDriverName": "ontap-nas-economy",
+  "managementLIF": "10.0.0.1",
+  "dataLIF": "10.0.0.2",
+  "svm": "svm_nfs",
+  "username": "vsadmin",
+  "password": "password",
+  "aggregate": "aggr1"
+}
+----
+====
+.iSCSI-Beispiel für <code>ontap-san</code>-Treiber
+[%collapsible]
+====
+[source, json]
+----
+{
+  "version": 1,
+  "storageDriverName": "ontap-san",
+  "managementLIF": "10.0.0.1",
+  "dataLIF": "10.0.0.3",
+  "svm": "svm_iscsi",
+  "username": "vsadmin",
+  "password": "password",
+  "aggregate": "aggr1",
+  "igroupName": "netappdvp"
+}
+----
+====
+.NFS-Beispiel für <code>ontap-san-economy</code>-Treiber
+[%collapsible]
+====
+[source, json]
+----
+{
+  "version": 1,
+  "storageDriverName": "ontap-san-economy",
+  "managementLIF": "10.0.0.1",
+  "dataLIF": "10.0.0.3",
+  "svm": "svm_iscsi_eco",
+  "username": "vsadmin",
+  "password": "password",
+  "aggregate": "aggr1",
+  "igroupName": "netappdvp"
+}
+----
+====
+.NVMe/TCP-Beispiel für <code>ontap-san</code>-Treiber
+[%collapsible]
+====
+[source, json]
+----
+{
+  "version": 1,
+  "backendName": "NVMeBackend",
+  "storageDriverName": "ontap-san",
+  "managementLIF": "10.0.0.1",
+  "svm": "svm_nvme",
+  "username": "vsadmin",
+  "password": "password",
+  "sanType": "nvme",
+  "useREST": true
+}
+----
+====
+.SCSI über FC Beispiel für <code>ontap-san</code> Treiber
+[%collapsible]
+====
+[source, json]
+----
+{
+  "version": 1,
+  "backendName": "ontap-san-backend",
+  "storageDriverName": "ontap-san",
+  "managementLIF": "10.0.0.1",
+  "sanType": "fcp",
+  "svm": "trident_svm",
+  "username": "vsadmin",
+  "password": "password",
+  "useREST": true
+}
+----
+====
+
+
+[[element-software-configuration]]
+== Element-Softwarekonfiguration
+
+Zusätzlich zu den globalen Konfigurationswerten stehen bei Verwendung der Element-Software (NetApp HCI/SolidFire) diese Optionen zur Verfügung.
+
+[cols="3*"]
+|===
+| Option | Beschreibung | Beispiel 
+
+
+| `Endpoint`  a| 
+\https://<login>:<password>@<mvip>/json-rpc/<element-version>
+ a| 
+\https://admin:admin@192.168.160.3/json-rpc/8.0
+
+
+
+| `SVIP`  a| 
+iSCSI-IP-Adresse und Port
+ a| 
+10.0.0.7:3260
+
+
+
+| `TenantName`  a| 
+SolidFireF Tenant to use (wird erstellt, falls nicht gefunden)
+ a| 
+`docker`
+
+
+
+| `InitiatorIFace`  a| 
+Schnittstelle angeben, wenn der iSCSI-Datenverkehr auf eine nicht standardmäßige Schnittstelle beschränkt wird
+ a| 
+`default`
+
+
+
+| `Types`  a| 
+QoS-Spezifikationen
+ a| 
+Siehe Beispiel unten
+
+
+
+| `LegacyNamePrefix`  a| 
+Präfix für aktualisierte Trident-Installationen. Wenn Sie eine Version von Trident vor 1.3.2 verwendet haben und ein Upgrade mit bestehenden Volumes durchführen, müssen Sie diesen Wert festlegen, um auf Ihre alten Volumes zuzugreifen, die über die Volume-Name-Methode zugeordnet wurden.
+ a| 
+`netappdvp-`
+
+|===
+Der `solidfire-san` Treiber unterstützt Docker Swarm nicht.
+
+
+
+[[example-element-software-configuration-file]]
+=== Beispiel einer Element-Konfigurationsdatei
+
+[source, json]
+----
+{
+  "version": 1,
+  "storageDriverName": "solidfire-san",
+  "Endpoint": "https://admin:admin@192.168.160.3/json-rpc/8.0",
+  "SVIP": "10.0.0.7:3260",
+  "TenantName": "docker",
+  "InitiatorIFace": "default",
+  "Types": [
+    {
+      "Type": "Bronze",
+      "Qos": {
+        "minIOPS": 1000,
+        "maxIOPS": 2000,
+        "burstIOPS": 4000
+      }
+    },
+    {
+      "Type": "Silver",
+      "Qos": {
+        "minIOPS": 4000,
+        "maxIOPS": 6000,
+        "burstIOPS": 8000
+      }
+    },
+    {
+      "Type": "Gold",
+      "Qos": {
+        "minIOPS": 6000,
+        "maxIOPS": 8000,
+        "burstIOPS": 10000
+      }
+    }
+  ]
+}
+----

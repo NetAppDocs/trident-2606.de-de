@@ -1,0 +1,35 @@
+= Datenübertragungs-Zeitüberschreitung-Anmerkung
+:allow-uri-read: 
+
+
+
+
+[[data-mover-timeout-annotation]]
+== Datenübertragungs-Zeitüberschreitung-Anmerkung
+
+Während Sicherungs- und Wiederherstellungsvorgängen können Sie die Annotation `protect.trident.netapp.io/data-mover-timeout-sec` verwenden, um die Zeitüberschreitung für Datenverschiebungsvorgänge zu konfigurieren. Diese Annotation legt die maximale Zeit in Sekunden fest, die ein Datenverschieber auf den Abschluss eines bestimmten Vorgangs warten soll, bevor eine Zeitüberschreitung eintritt. Sie ist besonders nützlich in Situationen, in denen Netzwerkprobleme oder andere Faktoren dazu führen können, dass Datenverschiebungsvorgänge ins Stocken geraten. Sie hilft, festgefahrene Vorgänge zu erkennen und zu behandeln, anstatt eine allgemeine Zeitüberschreitung für den gesamten Prozess festzulegen. Wenn beispielsweise aufgrund von Netzwerkproblemen beim Wiederherstellen von Volumendaten kein Fortschritt erzielt wird, tritt die Zeitüberschreitung nach der angegebenen Dauer ein.
+
+Sie können diese Annotation in Ihrer YAML-Datei wie unten gezeigt verwenden:
+
+[source, yaml]
+----
+---
+apiVersion: protect.trident.netapp.io/v1
+kind: BackupRestore
+metadata:
+  name: bkp-restore-kopia
+  namespace: trident-protect
+  annotations: # Optional annotations to configure data movement timeout
+    protect.trident.netapp.io/data-mover-timeout-sec: "2"
+spec:
+  appVaultRef: appvault-name
+  appArchivePath: my-backup-path
+  namespaceMapping: [{"source": "my-source-namespace", "destination": "my-destination-namespace"}]
+  storageClassMapping:
+    destination: "${destinationStorageClass}"
+    source: "${sourceStorageClass}"
+----
+In diesem Beispiel schlägt die Annotation beim  `BackupRestore`-Vorgang fehl, wenn innerhalb von 2 Sekunden kein Fortschritt beim Wiederherstellungsvorgang erzielt wird.
+
+
+NOTE: Ist der Wert der Annotation kleiner oder gleich 0, schlägt die Operation sofort fehl.

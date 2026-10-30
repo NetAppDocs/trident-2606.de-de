@@ -1,0 +1,343 @@
+---
+sidebar: sidebar 
+permalink: trident-reco/storage-config-best-practices.html 
+keywords: kubernetes, clusters, nodes, components, master, compute 
+summary: Ein Kubernetes-Cluster besteht typischerweise aus zwei Arten von Knoten, von denen jeder für unterschiedliche Aspekte der Funktionalität zuständig ist. 
+---
+= Bewährte Verfahren für die Trident Storage Konfiguration
+:hardbreaks:
+:allow-uri-read: 
+:icons: font
+:imagesdir: ../media/
+
+
+[role="lead"]
+Jede Speicherplattform im NetApp Portfolio verfügt über einzigartige Funktionen, die Anwendungen zugutekommen, ob containerisiert oder nicht.
+
+
+
+[[platform-overview]]
+== Plattformübersicht
+
+Trident ist mit ONTAP und Element kompatibel. Es gibt keine Plattform, die für alle Anwendungen und Szenarien besser geeignet ist als eine andere, jedoch sollten bei der Auswahl einer Plattform die Anforderungen der Anwendung und des Teams, das das Gerät verwaltet, berücksichtigt werden.
+
+Sie sollten die grundlegenden Best Practices für das Host-Betriebssystem mit dem Protokoll, das Sie verwenden, beachten. Optional können Sie in Erwägung ziehen, sofern verfügbar, die Best Practices für die Anwendung zusammen mit Backend-, Speicherklassen- und PVC-Einstellungen zu integrieren, um den Speicher für spezifische Anwendungen zu optimieren.
+
+
+
+[[ontap-and-cloud-volumes-ontap-best-practices]]
+== ONTAP und Cloud Volumes ONTAP Best Practices
+
+Lernen Sie die Best Practices für die Konfiguration von ONTAP und Cloud Volumes ONTAP für Trident.
+
+Die folgenden Empfehlungen sind Richtlinien für die Konfiguration von ONTAP für containerisierte Workloads, die Volumes nutzen, die von Trident dynamisch bereitgestellt werden. Jede sollte hinsichtlich ihrer Eignung für Ihre Umgebung geprüft und bewertet werden.
+
+
+
+[[use-svms-dedicated-to-trident]]
+=== Verwenden Sie SVM(s), die speziell für Trident vorgesehen sind
+
+Storage Virtual Machines (SVMs) bieten Isolation und administrative Trennung zwischen Mandanten auf einem ONTAP-System. Die Zuweisung einer SVM zu Anwendungen ermöglicht die Delegation von Berechtigungen und die Anwendung von Best Practices zur Begrenzung des Ressourcenverbrauchs.
+
+Für die Verwaltung der SVM stehen mehrere Optionen zur Verfügung:
+
+* Stellen Sie die Cluster-Managementoberfläche in der Backend-Konfiguration zusammen mit den entsprechenden Anmeldeinformationen bereit und geben Sie den SVM-Namen an.
+* Erstellen Sie eine dedizierte Managementoberfläche für die SVM mithilfe von ONTAP System Manager oder der CLI.
+* Teilen Sie die Verwaltungsrolle mit einer NFS-Datenschnittstelle.
+
+
+In jedem Fall sollte die Schnittstelle im DNS registriert sein, und der DNS-Name sollte bei der Konfiguration von Trident verwendet werden. Dies erleichtert einige DR-Szenarien, zum Beispiel SVM-DR ohne die Verwendung der Netzwerkidentitätsbeibehaltung.
+
+Es gibt keine Präferenz zwischen einer dedizierten oder gemeinsam genutzten Management-LIF für die SVM, jedoch sollten Sie sicherstellen, dass Ihre Netzwerksicherheitsrichtlinien mit dem von Ihnen gewählten Ansatz übereinstimmen. Unabhängig davon sollte die Management-LIF über DNS erreichbar sein, um maximale Flexibilität zu ermöglichen, falls  https://docs.netapp.com/ontap-9/topic/com.netapp.doc.pow-dap/GUID-B9E36563-1C7A-48F5-A9FF-1578B99AADA9.html["SVM-DR"^] in Verbindung mit Trident verwendet wird.
+
+
+
+[[limit-the-maximum-volume-count]]
+=== Begrenzen Sie die maximale Volume-Anzahl
+
+ONTAP-Speichersysteme haben eine maximale Volume-Anzahl, die je nach Softwareversion und Hardwareplattform variiert. Siehe  https://hwu.netapp.com/["NetApp Hardware Universe"^] für Ihre spezifische Plattform und ONTAP-Version, um die genauen Grenzwerte zu bestimmen. Wenn die Volume-Anzahl erschöpft ist, schlagen Bereitstellungsvorgänge nicht nur für Trident, sondern für alle Speicheranforderungen fehl.
+
+Tridents `ontap-nas` und `ontap-san` Treiber stellen ein FlexVolume für jedes erstellte Kubernetes Persistent Volume (PV) bereit. Der `ontap-nas-economy` Treiber erstellt etwa ein FlexVolume für alle 200 PVs (konfigurierbar zwischen 50 und 300). Der `ontap-san-economy` Treiber erstellt etwa ein FlexVolume für alle 100 PVs (konfigurierbar zwischen 50 und 200). Um zu verhindern, dass Trident alle verfügbaren Volumes auf dem Speichersystem verbraucht, sollten Sie ein Limit für die SVM festlegen. Sie können dies über die Befehlszeile tun:
+
+[listing]
+----
+vserver modify -vserver <svm_name> -max-volumes <num_of_volumes>
+----
+Der Wert für `max-volumes` variiert je nach mehreren Kriterien, die für Ihre Umgebung spezifisch sind:
+
+* Die Anzahl der vorhandenen Volumes im ONTAP-Cluster
+* Die Anzahl der Volumes, die Sie voraussichtlich außerhalb von Trident für andere Anwendungen bereitstellen werden
+* Die Anzahl der persistenten Volumes, die voraussichtlich von Kubernetes-Anwendungen verwendet werden
+
+
+Der  `max-volumes` Wert ist die Gesamtanzahl der über alle Nodes im ONTAP Cluster bereitgestellten Volumes und nicht auf einem einzelnen ONTAP Node. Daher kann es vorkommen, dass ein ONTAP Cluster-Node deutlich mehr oder weniger von Trident bereitgestellte Volumes hat als ein anderer Node.
+
+Ein ONTAP-Cluster mit zwei Knoten kann beispielsweise maximal 2000 FlexVol Volumes hosten. Die Festlegung der maximalen Volume-Anzahl auf 1250 erscheint sehr sinnvoll. Wenn jedoch nur  https://library.netapp.com/ecmdocs/ECMP1368859/html/GUID-3AC7685D-B150-4C1F-A408-5ECEB3FF0011.html["Aggregate"^] von einem Knoten dem SVM zugewiesen sind oder die Aggregate, die von einem Knoten zugewiesen wurden, nicht bereitgestellt werden können (zum Beispiel aufgrund von Kapazität), wird der andere Knoten zum Ziel für alle von Trident bereitgestellten Volumes. Das bedeutet, dass das Volume-Limit für diesen Knoten möglicherweise erreicht wird, bevor der  `max-volumes` Wert erreicht ist, was sowohl Trident als auch andere Volume-Operationen, die diesen Knoten nutzen, beeinträchtigt. *Sie können diese Situation vermeiden, indem Sie sicherstellen, dass Aggregate von jedem Knoten im Cluster dem von Trident verwendeten SVM in gleicher Anzahl zugewiesen werden.*
+
+
+
+[[clone-a-volume]]
+=== Ein Volume klonen
+
+NetApp Trident unterstützt das Klonen von Volumes bei Verwendung der `ontap-nas`, `ontap-san` und `solidfire-san` Speichertreiber. Bei Verwendung der `ontap-nas-flexgroup` oder `ontap-nas-economy` Treiber wird das Klonen nicht unterstützt. Das Erstellen eines neuen Volumes aus einem vorhandenen Volume führt zur Erstellung eines neuen Snapshots.
+
+
+WARNING: Vermeiden Sie das Klonen einer PVC, die mit einer anderen StorageClass verknüpft ist. Führen Sie Klonvorgänge innerhalb derselben StorageClass durch, um Kompatibilität zu gewährleisten und unerwartetes Verhalten zu verhindern.
+
+
+
+[[limit-the-maximum-size-of-volumes-created-by-trident]]
+=== Begrenzen Sie die maximale Größe von Volumes, die von Trident erstellt werden
+
+Um die maximale Größe für Volumes zu konfigurieren, die von Trident erstellt werden können, verwenden Sie den  `limitVolumeSize` Parameter in Ihrer  `backend.json` Definition.
+
+Neben der Kontrolle der Volume-Größe am Speicherarray sollten Sie auch die Kubernetes-Funktionen nutzen.
+
+
+
+[[limit-the-maximum-size-of-flexvols-created-by-trident]]
+=== Begrenzen Sie die maximale Größe der FlexVols, die von Trident erstellt werden
+
+Um die maximale Größe für FlexVols, die als Pools für ontap-san-economy und ontap-nas-economy Treiber verwendet werden, zu konfigurieren, verwenden Sie den  `limitVolumePoolSize` Parameter in Ihrer  `backend.json` Definition.
+
+
+
+[[configure-trident-to-use-bidirectional-chap]]
+=== Konfigurieren Sie Trident für die Verwendung von bidirektionalem CHAP
+
+Sie können die CHAP-Initiator- und Ziel-Benutzernamen sowie Passwörter in Ihrer Backend-Definition angeben und Trident CHAP auf der SVM aktivieren lassen. Mit dem  `useCHAP`-Parameter in Ihrer Backend-Konfiguration authentifiziert Trident iSCSI-Verbindungen für ONTAP-Backends mit CHAP.
+
+
+
+[[create-and-use-an-svm-qos-policy]]
+=== Erstellen und Verwenden einer SVM-QoS-Richtlinie
+
+Durch die Nutzung einer ONTAP-QoS-Richtlinie, die auf die SVM angewendet wird, wird die Anzahl der von den durch Trident bereitgestellten Volumes verbrauchbaren IOPS begrenzt. Dies hilft,  http://docs.netapp.com/ontap-9/topic/com.netapp.doc.pow-perf-mon/GUID-77DF9BAF-4ED7-43F6-AECE-95DFB0680D2F.html?cp=7_1_2_1_2["einen Tyrannen verhindern"^]dass ein außer Kontrolle geratener Container keine Workloads außerhalb der Trident SVM beeinträchtigt.
+
+Sie können in wenigen Schritten eine QoS-Richtlinie für die SVM erstellen. Siehe die Dokumentation für Ihre Version von ONTAP für die genauesten Informationen. Das folgende Beispiel erstellt eine QoS-Richtlinie, die die insgesamt für die SVM verfügbaren IOPS auf 5000 begrenzt.
+
+[listing]
+----
+# create the policy group for the SVM
+qos policy-group create -policy-group <policy_name> -vserver <svm_name> -max-throughput 5000iops
+
+# assign the policy group to the SVM, note this will not work
+# if volumes or files in the SVM have existing QoS policies
+vserver modify -vserver <svm_name> -qos-policy-group <policy_name>
+----
+Zusätzlich, wenn Ihre Version von ONTAP dies unterstützt, können Sie die Verwendung eines QoS-Minimums in Betracht ziehen, um einen bestimmten Durchsatz für containerisierte Workloads zu garantieren. Adaptives QoS ist nicht mit einer SVM-Level-Richtlinie kompatibel.
+
+Die Anzahl der für die containerisierten Workloads reservierten IOPS hängt von vielen Aspekten ab. Dazu gehören unter anderem:
+
+* Andere Workloads, die das Speichersystem nutzen. Falls andere Workloads, die nicht mit der Kubernetes-Bereitstellung zusammenhängen, die Speicherressourcen nutzen, ist darauf zu achten, dass diese Workloads nicht versehentlich negativ beeinflusst werden.
+* Erwartete Workloads, die in Containern ausgeführt werden. Wenn Workloads mit hohen IOPS-Anforderungen in Containern ausgeführt werden, führt eine niedrige QoS-Richtlinie zu einer schlechten Benutzererfahrung.
+
+
+Es ist wichtig zu beachten, dass eine auf SVM-Ebene zugewiesene QoS-Richtlinie dazu führt, dass alle für die SVM bereitgestellten Volumes denselben IOPS-Pool nutzen. Wenn eine oder wenige der containerisierten Anwendungen einen hohen IOPS-Bedarf haben, könnten sie zu einem „Bully“ für die anderen containerisierten Workloads werden. Wenn dies der Fall ist, sollten Sie in Erwägung ziehen, externe Automatisierung zu verwenden, um QoS-Richtlinien pro Volume zuzuweisen.
+
+
+IMPORTANT: Sie sollten die QoS-Richtliniengruppe der SVM *nur* zuweisen, wenn Ihre ONTAP Version älter als 9.8 ist.
+
+
+
+[[create-qos-policy-groups-for-trident]]
+=== QoS-Policy-Gruppen für Trident erstellen
+
+Quality of Service (QoS) gewährleistet, dass die Leistung kritischer Workloads nicht durch konkurrierende Workloads beeinträchtigt wird. ONTAP QoS-Richtliniengruppen bieten QoS-Optionen für Volumes und ermöglichen Benutzern, die Durchsatzobergrenze für einen oder mehrere Workloads festzulegen. Weitere Informationen zu QoS finden Sie unter https://docs.netapp.com/ontap-9/topic/com.netapp.doc.pow-perf-mon/GUID-77DF9BAF-4ED7-43F6-AECE-95DFB0680D2F.html["Gewährleistung des Durchsatzes mit QoS"^]. Sie können QoS-Richtliniengruppen im Backend oder in einem Speicherpool angeben, und sie werden auf jedes in diesem Pool oder Backend erstellte Volume angewendet.
+
+ONTAP bietet zwei Arten von QoS-Richtliniengruppen: traditionelle und adaptive. Traditionelle Richtliniengruppen bieten einen festen maximalen (oder in späteren Versionen minimalen) Durchsatz in IOPS. Adaptives QoS skaliert den Durchsatz automatisch mit der Workload-Größe und hält das Verhältnis von IOPS zu TB/GB aufrecht, wenn sich die Größe der Workload ändert. Dies bietet einen erheblichen Vorteil, wenn Sie Hunderte oder Tausende von Workloads in einer großen Umgebung verwalten.
+
+Beachten Sie Folgendes, wenn Sie QoS-Richtliniengruppen erstellen:
+
+* Sie sollten den  `qosPolicy` Schlüssel im  `defaults` Block der Backend-Konfiguration festlegen. Siehe das folgende Beispiel für eine Backend-Konfiguration:
+
+
+[listing]
+----
+---
+version: 1
+storageDriverName: ontap-nas
+managementLIF: 0.0.0.0
+dataLIF: 0.0.0.0
+svm: svm0
+username: user
+password: pass
+defaults:
+  qosPolicy: standard-pg
+storage:
+  - labels:
+      performance: extreme
+    defaults:
+      adaptiveQosPolicy: extremely-adaptive-pg
+  - labels:
+      performance: premium
+    defaults:
+      qosPolicy: premium-pg
+
+----
+* Sie sollten die Richtliniengruppen pro Volume anwenden, sodass jedes Volume den gesamten Durchsatz erhält, wie von der Richtliniengruppe festgelegt. Gemeinsam genutzte Richtliniengruppen werden nicht unterstützt.
+
+
+Weitere Informationen zu QoS-Richtliniengruppen finden Sie unter https://docs.netapp.com/us-en/ontap/concepts/manual-pages.html["ONTAP-Befehlsreferenz"^].
+
+
+
+[[limit-storage-resource-access-to-kubernetes-cluster-members]]
+=== Beschränken Sie den Zugriff auf Speicherressourcen auf Mitglieder des Kubernetes-Clusters
+
+Die Beschränkung des Zugriffs auf die von Trident erstellten NFS-Volumes, iSCSI-LUNs und FC-LUNs ist ein entscheidender Bestandteil der Sicherheitsarchitektur Ihrer Kubernetes-Bereitstellung. Dadurch wird verhindert, dass Hosts, die nicht Teil des Kubernetes-Clusters sind, auf die Volumes zugreifen und möglicherweise Daten unerwartet verändern.
+
+Es ist wichtig zu verstehen, dass Namespaces die logische Grenze für Ressourcen in Kubernetes darstellen. Die Annahme ist, dass Ressourcen im selben Namespace gemeinsam genutzt werden können, jedoch gibt es, was wichtig ist, keine Namespace-übergreifende Fähigkeit. Das bedeutet, dass selbst wenn PVs globale Objekte sind, sie, wenn sie an ein PVC gebunden sind, nur von Pods im selben Namespace zugänglich sind. *Es ist entscheidend sicherzustellen, dass Namespaces verwendet werden, um bei Bedarf eine Trennung bereitzustellen.*
+
+Die größte Sorge der meisten Organisationen hinsichtlich Datensicherheit im Kubernetes-Kontext besteht darin, dass ein Prozess in einem Container auf Speicher zugreifen kann, der auf dem Host eingebunden ist, aber nicht für den Container bestimmt ist.  https://en.wikipedia.org/wiki/Linux_namespaces["Namensräume"^] sind darauf ausgelegt, diese Art von Kompromittierung zu verhindern. Es gibt jedoch eine Ausnahme: privilegierte Container.
+
+Ein privilegierter Container ist ein Container, der mit deutlich mehr Host-Berechtigungen als üblich ausgeführt wird. Diese werden nicht standardmäßig verweigert, daher stellen Sie sicher, dass Sie die Fähigkeit mit  https://kubernetes.io/docs/concepts/policy/pod-security-policy/["Sicherheitsrichtlinien für Pods"^] deaktivieren.
+
+Für Volumes, auf die sowohl von Kubernetes als auch von externen Hosts zugegriffen werden soll, sollte der Speicher auf traditionelle Weise verwaltet werden, wobei das PV vom Administrator eingeführt und nicht von Trident verwaltet wird. Dies stellt sicher, dass das Speichervolume nur dann zerstört wird, wenn sowohl Kubernetes als auch die externen Hosts die Verbindung getrennt haben und das Volume nicht mehr verwenden. Zusätzlich kann eine benutzerdefinierte Exportrichtlinie angewendet werden, die den Zugriff von den Kubernetes-Clusterknoten und von Zielservern außerhalb des Kubernetes-Clusters ermöglicht.
+
+Für Bereitstellungen mit dedizierten Infrastrukturknoten (zum Beispiel OpenShift) oder anderen Knoten, die keine Benutzeranwendungen planen können, sollten separate Exportrichtlinien verwendet werden, um den Zugriff auf Speicherressourcen weiter einzuschränken. Dies umfasst die Erstellung einer Exportrichtlinie für Dienste, die auf diesen Infrastrukturknoten bereitgestellt werden (zum Beispiel die OpenShift Metrics- und Logging-Dienste), sowie für Standardanwendungen, die auf Nicht-Infrastrukturknoten bereitgestellt werden.
+
+
+
+[[use-a-dedicated-export-policy]]
+=== Verwenden Sie eine dedizierte Exportrichtlinie
+
+Sie sollten sicherstellen, dass für jedes Backend eine Exportrichtlinie existiert, die den Zugriff ausschließlich auf die im Kubernetes-Cluster vorhandenen Knoten erlaubt. Trident kann Exportrichtlinien automatisch erstellen und verwalten. Auf diese Weise beschränkt Trident den Zugriff auf die von ihm bereitgestellten Volumes auf die Knoten im Kubernetes-Cluster und vereinfacht das Hinzufügen und Entfernen von Knoten.
+
+Alternativ können Sie auch manuell eine Exportrichtlinie erstellen und sie mit einer oder mehreren Exportregeln versehen, die jede Knotenzugriffsanfrage verarbeiten:
+
+* Verwenden Sie den  `vserver export-policy create` ONTAP CLI-Befehl, um die Export-Policy zu erstellen.
+* Fügen Sie der Exportrichtlinie Regeln mithilfe des `vserver export-policy rule create` ONTAP CLI-Befehls hinzu.
+
+
+Durch das Ausführen dieser Befehle können Sie einschränken, welche Kubernetes-Knoten Zugriff auf die Daten haben.
+
+
+
+[[disable-showmount-for-the-application-svm]]
+=== Deaktivieren `showmount` für die Anwendung SVM
+
+Die `showmount` Funktion ermöglicht es einem NFS-Client, die SVM nach einer Liste verfügbarer NFS-Exporte abzufragen. Ein im Kubernetes-Cluster bereitgestellter Pod kann den `showmount -e` Befehl gegen die SVM ausführen und eine Liste der verfügbaren Mounts erhalten, einschließlich solcher, auf die er keinen Zugriff hat. Auch wenn dies für sich genommen kein Sicherheitsrisiko darstellt, liefert es dennoch unnötige Informationen, die einem unbefugten Benutzer potenziell helfen können, eine Verbindung zu einem NFS-Export herzustellen.
+
+Sie sollten  `showmount` mithilfe des ONTAP CLI-Befehls auf SVM-Ebene deaktivieren:
+
+[listing]
+----
+vserver nfs modify -vserver <svm_name> -showmount disabled
+----
+
+
+[[solidfire-best-practices]]
+== SolidFire Best Practices
+
+Lernen Sie die Best Practices für die Konfiguration von SolidFire-Speicher für Trident.
+
+
+
+[[create-solidfire-account]]
+=== SolidFire-Konto erstellen
+
+Jedes SolidFire Konto repräsentiert einen eindeutigen Volume-Inhaber und erhält einen eigenen Satz von Challenge-Handshake Authentication Protocol (CHAP)-Anmeldeinformationen. Sie können auf die einem Konto zugewiesenen Volumes entweder mit dem Kontonamen und den entsprechenden CHAP-Anmeldeinformationen oder über eine Volume-Zugriffsgruppe zugreifen. Einem Konto können bis zu zweitausend Volumes zugewiesen werden, aber ein Volume kann nur zu einem Konto gehören.
+
+
+
+[[create-a-qos-policy]]
+=== Erstellen Sie eine QoS-Richtlinie
+
+Verwenden Sie SolidFire Quality of Service (QoS)-Richtlinien, wenn Sie eine standardisierte Quality of Service-Einstellung erstellen und speichern möchten, die auf viele Volumes angewendet werden kann.
+
+Sie können QoS-Parameter pro Volume festlegen. Die Leistung jedes Volumes kann durch das Festlegen von drei konfigurierbaren Parametern sichergestellt werden, die die QoS definieren: Min IOPS, Max IOPS und Burst IOPS.
+
+Hier sind die möglichen Minimal-, Maximal- und Burst-IOPS-Werte für die 4Kb-Blockgröße.
+
+[cols="5*"]
+|===
+| IOPS-Parameter | Definition | Min. Wert | Standardwert | Max. value (4 KB) 
+
+
+ a| 
+Min. IOPS
+ a| 
+Das garantierte Leistungsniveau für ein Volume.
+| 50  a| 
+50
+ a| 
+15000
+
+
+
+ a| 
+Max. IOPS
+ a| 
+Die Leistung wird dieses Limit nicht überschreiten.
+| 50  a| 
+15000
+ a| 
+200.000
+
+
+
+ a| 
+Burst-IOPS
+ a| 
+Maximal zulässige IOPS in einem Kurzzeit-Burst-Szenario.
+| 50  a| 
+15000
+ a| 
+200.000
+
+|===
+
+NOTE: Obwohl die Werte für Max IOPS und Burst IOPS auf bis zu 200.000 eingestellt werden können, ist die tatsächliche maximale Leistung eines Volumes durch die Clusternutzung und die Leistung pro Node begrenzt.
+
+Blockgröße und Bandbreite haben einen direkten Einfluss auf die Anzahl der IOPS. Mit zunehmender Blockgröße erhöht das System die Bandbreite auf ein Niveau, das für die Verarbeitung der größeren Blockgrößen erforderlich ist. Mit steigender Bandbreite sinkt die Anzahl der IOPS, die das System erreichen kann. Weitere Informationen zu QoS und Leistung finden Sie unter  https://www.netapp.com/pdf.html?item=/media/10502-tr-4644.pdf["SolidFire Quality of Service"^].
+
+
+
+[[solidfire-authentication]]
+=== SolidFire Authentifizierung
+
+Element unterstützt zwei Methoden für die Authentifizierung: CHAP und Volume Access Groups (VAG). CHAP verwendet das CHAP-Protokoll, um den Host gegenüber dem Backend zu authentifizieren. Volume Access Groups steuern den Zugriff auf die Volumes, die sie bereitstellen. NetApp empfiehlt die Verwendung von CHAP zur Authentifizierung, da es einfacher ist und keine Skalierungsbeschränkungen hat.
+
+
+NOTE: Trident mit dem erweiterten CSI-Provisioner unterstützt die Verwendung der CHAP-Authentifizierung. VAGs sollten nur im herkömmlichen Nicht-CSI-Betriebsmodus verwendet werden.
+
+CHAP-Authentifizierung (Überprüfung, ob der Initiator der beabsichtigte Volume-Benutzer ist) wird nur bei kontobasierter Zugriffskontrolle unterstützt. Wenn Sie CHAP zur Authentifizierung verwenden, stehen zwei Optionen zur Verfügung: unidirektionales CHAP und bidirektionales CHAP. Unidirektionales CHAP authentifiziert den Volume-Zugriff mithilfe des SolidFire-Kontonamens und des Initiator-Geheimnisses. Die bidirektionale CHAP-Option bietet die sicherste Methode zur Authentifizierung des Volumes, da das Volume den Host über den Kontonamen und das Initiator-Geheimnis authentifiziert und anschließend der Host das Volume über den Kontonamen und das Ziel-Geheimnis authentifiziert.
+
+Wenn CHAP nicht aktiviert werden kann und VAGs erforderlich sind, erstellen Sie die Zugriffsgruppe und fügen Sie die Host-Initiatoren und Volumes zur Zugriffsgruppe hinzu. Jeder IQN, den Sie einer Zugriffsgruppe hinzufügen, kann auf jedes Volume in der Gruppe mit oder ohne CHAP-Authentifizierung zugreifen. Wenn der iSCSI-Initiator für die Verwendung von CHAP-Authentifizierung konfiguriert ist, wird die kontobasierte Zugriffskontrolle verwendet. Wenn der iSCSI-Initiator nicht für die Verwendung von CHAP-Authentifizierung konfiguriert ist, wird die Zugriffskontrolle über Volume Access Group verwendet.
+
+
+
+[[where-to-find-more-information]]
+== Wo finde ich weitere Informationen?
+
+Einige der Best-Practice-Dokumentationen sind unten aufgeführt. Suchen Sie im  https://www.netapp.com/search/["NetApp Bibliothek"^] nach den aktuellsten Versionen.
+
+*ONTAP*
+
+* https://www.netapp.com/pdf.html?item=/media/10720-tr-4067.pdf["NFS Best Practice and Implementation Guide"^]
+* http://docs.netapp.com/ontap-9/topic/com.netapp.doc.dot-cm-sanag/home.html["SAN-Verwaltung"^] (für iSCSI)
+* http://docs.netapp.com/ontap-9/topic/com.netapp.doc.exp-iscsi-rhel-cg/home.html["iSCSI Express-Konfiguration für RHEL"^]
+
+
+*Element Software*
+
+* https://www.netapp.com/pdf.html?item=/media/10507-tr4639.pdf["Konfiguration von SolidFire für Linux"^]
+
+
+*NetApp HCI*
+
+* https://docs.netapp.com/us-en/hci/docs/hci_prereqs_overview.html["NetApp HCI-Bereitstellungsvoraussetzungen"^]
+* https://docs.netapp.com/us-en/hci/docs/concept_nde_access_overview.html["Zugriff auf die NetApp Deployment Engine"^]
+
+
+*Informationen zu bewährten Anwendungspraktiken*
+
+* https://docs.netapp.com/us-en/ontap-apps-dbs/mysql/mysql-overview.html["Bewährte Verfahren für MySQL auf ONTAP"^]
+* https://www.netapp.com/pdf.html?item=/media/10510-tr-4605.pdf["Best Practices für MySQL auf SolidFire"^]
+* https://www.netapp.com/pdf.html?item=/media/10513-tr-4635.pdf["NetApp SolidFire und Cassandra"^]
+* https://www.netapp.com/pdf.html?item=/media/10511-tr4606.pdf["Oracle Best Practices auf SolidFire"^]
+* https://www.netapp.com/pdf.html?item=/media/10512-tr-4610.pdf["PostgreSQL Best Practices auf SolidFire"^]
+
+
+Nicht alle Anwendungen verfügen über spezifische Richtlinien, es ist wichtig, mit Ihrem NetApp Team zusammenzuarbeiten und die  https://www.netapp.com/search/["NetApp Bibliothek"^] zu nutzen, um die aktuellste Dokumentation zu finden.
